@@ -5,5 +5,6 @@ edition = "2021"
 
 [dependencies]
 inkwell = { version = "0.4.0", features = ["llvm14-0"] }
+phf = { version = "0.11.2", features = ["macros"] }
 serde = { version = "1.0.204", features = ["derive", "std"] }
 serde_yaml = "0.9.34"

@@ -1,0 +1,1 @@
+fun main() -> disp(123);

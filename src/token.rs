@@ -1,6 +1,7 @@
 use core::fmt;
 
 use serde::Serialize;
+use crate::util::Color;
 
 #[derive(Debug, PartialEq, Eq, Serialize, Clone, Copy)]
 #[serde(rename_all = "kebab-case")]
@@ -39,6 +40,6 @@ impl Token {
 
 impl fmt::Display for Token {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    write!(f, "token:{}<text:{:?}, index: {:?}>", self.class, self.text, self.index)
+    write!(f, "token:{}<text:'{}', index: {:?}>", self.class.color(33), self.text.color(32), self.index)
   }
 }
