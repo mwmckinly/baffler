@@ -27,9 +27,9 @@ impl fmt::Display for Class {
 
 #[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 pub struct Token {
-  text: String,
-  class: Class,
-  index: [usize; 2]
+  pub text: String,
+  pub class: Class,
+  pub index: [usize; 2]
 }
 
 impl Token {
