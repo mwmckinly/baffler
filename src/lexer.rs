@@ -2,17 +2,6 @@ use std::fs::read_to_string;
 
 use crate::token::{Class, Token};
 use crate::util::{Color, Has};
-use phf::phf_map;
-
-
-static Chars: phf::Map<char, Class> = phf_map!(
-  '[' => Class::LeftBrace, ']' => Class::RightBrace,
-  '{' => Class::LeftBrack, '}' => Class::RightBrack,
-  '(' => Class::LeftParen, ')' => Class::RightParen,
-
-  '.' => Class::Dot,   ',' => Class::Comma, 
-  ':' => Class::Colon, ';' => Class::SemiColon,
-);
 
 pub struct Lexer {
   filename: String,
@@ -71,6 +60,7 @@ impl Lexer {
         let class = match text.as_str() {
           "fun" | "set" | "var" |
           "use" | "emit" => Class::Keyword,
+          "null" => Class::Null,
           "true" | "false" => Class::Boolean,
           _ => Class::Identifier,
         };
@@ -89,7 +79,39 @@ impl Lexer {
 
         self.tokens.push(Token::new(Class::Number, text, index));
       },
-      _ if self.current() == '"' => {},
+      _ if self.current() == '"' => {
+        let mut text = "".to_string();
+        self.advance();
+
+        while self.current() != '"' {
+          if self.pointer == self.source.len() {
+            println!("{}: found <eof> before string delim '\"'", "error".color(31));
+            break;
+          }
+          if self.current() == '\\' 
+            { self.advance(); text += "\\"; }
+
+          text.push(self.current());
+          self.advance();
+        } self.advance();
+
+        self.tokens.push(Token::new(Class::String, text, index));
+      },
+
+      '[' => self.append(Class::LeftBrace), 
+      '{' => self.append(Class::LeftBrack), 
+      '(' => self.append(Class::LeftParen), 
+      ']' => self.append(Class::RightBrace),
+      '}' => self.append(Class::RightBrack),
+      ')' => self.append(Class::RightParen),
+    
+      '.' => self.append(Class::Dot),   
+      ',' => self.append(Class::Comma), 
+      ':' => self.append(Class::Colon), 
+      ';' => self.append(Class::SemiColon),
+    
+
+      '|' | '&' | '!' => self.append(Class::LogicOp),
 
       '+' | '*' | '/' | '%' => {
         let mut text = self.current().to_string(); self.advance();
@@ -118,6 +140,16 @@ impl Lexer {
         self.tokens.push(Token::new(Class::BooleanOp, text, index));
       },
 
+      '=' => {
+        self.advance(); 
+        if self.current() == '=' {
+          self.advance();
+          self.tokens.push(Token::new(Class::BooleanOp, "==", index))
+        } else {
+          self.tokens.push(Token::new(Class::Assign, "=", index))
+        }
+      }
+
       '#' => while !['\n', '\0'].has(&self.current()) { self.advance(); }
 
       ' ' => self.advance(),
@@ -126,11 +158,9 @@ impl Lexer {
         self.position[1] += 1;
         self.position[0] = 1;
       },
+      '\0'=> self.append(Class::Eof),
 
       _ => {
-        if let Some(class) = Chars.get(&current) 
-          { self.append(*class); return; }
-
         println!(
           "{}[{}:{}] --> {}: invalid character {:?}", 
           self.filename, index[0], index[1], "error".color(31), current
