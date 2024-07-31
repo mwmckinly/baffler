@@ -31,7 +31,6 @@ pub struct Token {
   pub class: Class,
   pub index: [usize; 2]
 }
-
 impl Token {
   pub fn new<S:ToString>(class: Class, text: S, index: [usize; 2]) -> Token {
     Self { text: text.to_string(), class, index }

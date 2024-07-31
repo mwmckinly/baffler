@@ -32,6 +32,12 @@ impl Lexer {
 
     return lexer;
   }
+  pub fn metadata(&self) -> (String, Vec<String>) {
+    let lines: String = self.source.clone().iter().collect();
+    let lines = lines.split("\n").map(|x| x.to_string());
+
+    (self.filename.clone(), lines.collect())
+  }
   //========== Helper Functions ==========//
   fn advance(&mut self) {
     self.position[1] += 1;
@@ -52,14 +58,16 @@ impl Lexer {
       _ if self.current().is_alphabetic() => {
         let mut text: String = "".into();
 
-        while self.current().is_alphanumeric() {
+        let check = |c: char| c.is_alphanumeric() || c == '_'; 
+
+        while check(self.current()) {
           text.push(self.current()); 
           self.advance();
         }
 
         let class = match text.as_str() {
-          "fun" | "set" | "var" |
-          "use" | "emit" => Class::Keyword,
+          "fun" | "set" | "var" | "as" |
+          "use" | "emit" | "if" | "else" => Class::Keyword,
           "null" => Class::Null,
           "true" | "false" => Class::Boolean,
           _ => Class::Identifier,
@@ -68,10 +76,10 @@ impl Lexer {
         self.tokens.push(Token::new(class, text, index));
       },
       _ if self.current().is_numeric() => {
-        let mut text: String = "".into();
-        let mut dots = 0;
+        let mut text: String = "".into(); let mut dots = 0;
+        let check = |c: char| c.is_numeric() || c == '.';
         
-        while self.current().is_numeric() {
+        while check(self.current()) {
           if self.current() == '.' { dots += 1; }
           text.push(self.current()); 
           self.advance(); if dots == 2 { break; }
@@ -155,10 +163,10 @@ impl Lexer {
       ' ' => self.advance(),
       '\n' => {
         self.advance();
-        self.position[1] += 1;
-        self.position[0] = 1;
+        self.position[1] = 1;
+        self.position[0] += 1;
       },
-      '\0'=> self.append(Class::Eof),
+      '\0'=> { self.position[1] += 1; self.append(Class::Eof) },
 
       _ => {
         println!(
