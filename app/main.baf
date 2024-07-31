@@ -1,4 +1,4 @@
-use std:io;
+set name = 123;
 
 # fun fib(val: num): num -> [
 #   if val <= 1
@@ -14,5 +14,4 @@ use std:io;
 #   if date == "11/09"
 #     age += 1;
 # ]
-
-main():name == fib(1):name;
+# 

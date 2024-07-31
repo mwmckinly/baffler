@@ -357,6 +357,7 @@ impl Parser {
     Node::WhileLoop { bool, body }
   }
   fn parse_import(&mut self) -> Node {
+    self.advance();
     let mut path = vec![self.consume(Class::Identifier, "expected package name / exported member after 'use'")];
 
     while self.current().class == Class::Colon {

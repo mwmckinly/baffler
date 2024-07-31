@@ -12,10 +12,12 @@ pub struct Lexer {
 
 impl Lexer {
   pub fn init(file: File) -> Lexer {
+
+    let mut source = file.chars().clone();
+    source.push('\0');
     
     let lexer = Lexer {
-      source: file.chars().clone(),
-      filename: file.name(),
+      source, filename: file.name(),
       tokens: vec![], pointer: 0,
       position: [1, 1],
     };
@@ -102,8 +104,8 @@ impl Lexer {
     
       '.' => self.append(Class::Dot),   
       ',' => self.append(Class::Comma), 
-      ':' => self.append(Class::Colon), 
       ';' => self.append(Class::SemiColon),
+      ':' => self.append(Class::Colon), 
     
 
       '|' | '&' | '!' => self.append(Class::LogicOp),
