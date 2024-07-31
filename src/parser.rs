@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use crate::lexer::Lexer;
 use crate::token::{Class, Token};
-use crate::util::{Color, Has};
+use crate::util::{Color, File, Has};
 use crate::syntax::{Node, Expr};
 
 pub struct Parser {
@@ -14,12 +14,13 @@ pub struct Parser {
 
 impl Parser {
   pub fn init(lexer: &mut Lexer) -> Parser {
-    let (filename, source) = lexer.metadata();
+    let file = lexer.metadata();
+    let source = file.lines().clone();
     let tokens = lexer.tokenize();
 
     let parser = Parser {
-      filename, source,
-      pointer: 0, tokens,
+      filename: file.name(), 
+      source, pointer: 0, tokens,
     };
 
     return parser;
@@ -31,6 +32,9 @@ impl Parser {
     }
 
     Node::Compound { body }
+  }
+  pub fn metadata(&self) -> File {
+    File::init(self.filename.clone(), self.source.join("\n"))
   }
   //============== Helper Functions ==============//
   fn advance(&mut self) {

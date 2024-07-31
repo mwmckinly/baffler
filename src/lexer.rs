@@ -1,42 +1,29 @@
-use std::fs::read_to_string;
-
 use crate::token::{Class, Token};
-use crate::util::{Color, Has};
+use crate::util::{Color, File, Has};
 
 pub struct Lexer {
+  tokens: Vec<Token>,
   filename: String,
   source: Vec<char>,
-  tokens: Vec<Token>,
   
   pointer: usize,
   position: [usize; 2],
 }
 
 impl Lexer {
-  pub fn init(filename: String) -> Lexer {
-    let source = if let Ok(mut code) = read_to_string(&filename) { 
-      code.push('\0'); code 
-    } else { 
-      println!(
-        "{}: invalid filename -- {} does not exist.", 
-        "error".color(31), filename
-      ); std::process::exit(1) 
-    }.chars().collect();
+  pub fn init(file: File) -> Lexer {
     
     let lexer = Lexer {
-      filename, source,
-      tokens: vec![],
-      pointer: 0,
+      source: file.chars().clone(),
+      filename: file.name(),
+      tokens: vec![], pointer: 0,
       position: [1, 1],
     };
 
     return lexer;
   }
-  pub fn metadata(&self) -> (String, Vec<String>) {
-    let lines: String = self.source.clone().iter().collect();
-    let lines = lines.split("\n").map(|x| x.to_string());
-
-    (self.filename.clone(), lines.collect())
+  pub fn metadata(&self) -> File {
+    File::init(self.filename.clone(), self.source.iter().collect())
   }
   //========== Helper Functions ==========//
   fn advance(&mut self) {

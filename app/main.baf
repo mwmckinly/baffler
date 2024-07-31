@@ -1,3 +1,5 @@
+use std:io;
+
 # fun fib(val: num): num -> [
 #   if val <= 1
 #     emit val;

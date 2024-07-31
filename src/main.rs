@@ -4,16 +4,20 @@ use std::fs::write;
 
 use lexer::Lexer;
 use parser::Parser;
+use util::File;
 
 mod token;
 mod lexer;
 mod util;
 mod syntax;
 mod parser;
+mod visitor;
 
 fn main() {
-	let mut lexer = Lexer::init("app/main.baf".into());
+	let file = File::new("app/main.baf".into());
+	
+	let mut lexer = Lexer::init(file.clone());
 	let mut parser = Parser::init(&mut lexer);
 
-	write(lexer.metadata().0 + ".ast", serde_yaml::to_string(&parser.parse()).unwrap()).unwrap();
+	write(file.name() + ".ast", serde_yaml::to_string(&parser.parse()).unwrap()).unwrap();
 }

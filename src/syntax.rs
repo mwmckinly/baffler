@@ -67,6 +67,26 @@ pub enum Node {
   Expression { expr: Expr },
   NullVoid,
 }
+impl Node {
+  pub fn name(&self) -> String {
+    let name = match self {
+      Node::SetAssign { .. } => "set-assign",
+      Node::VarAssign { .. } => "var-assign",
+      Node::ModifyVar { .. } => "modify-var",
+      Node::FuncDefinition { .. } => "func-define",
+      Node::ValueEmission { .. } => "emit-value",
+      Node::Compound { .. } => "compound",
+      Node::IfStatement { .. } => "if-statement",
+      Node::WhileLoop { .. } => "while-loop",
+      Node::ImportPackage { .. } => "use-package",
+      Node::Expression { .. } => "expression",
+      Node::NullVoid => "null-void",
+    };
+
+    format!("node:{name}")
+  }
+}
+
 impl fmt::Display for Node {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match self {
