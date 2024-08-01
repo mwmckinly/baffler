@@ -83,7 +83,7 @@ impl TypeChecker {
 }
 
 impl TypeChecker {
-  fn message<V:Display, S:Display, Value:SourceInfo>(&self, node: &Value, kind: String, header: V, message: S) {
+  pub fn message<V:Display, S:Display, Value:SourceInfo>(&self, node: &Value, kind: String, header: V, message: S) {
     let (line, col, len) = node.info();
 
     let buffr = ' '.to_string().repeat(line.to_string().len());
@@ -130,6 +130,7 @@ impl TypeChecker {
 
         if var.is_none() {
           self.error(expr, "symbol not found", format!("{} is either not in scope or not defined", value.text));
+          return Type::None;
         };
 
         if let Symbol::Variable { kind, .. } = var.unwrap() {
@@ -214,6 +215,16 @@ impl TypeChecker {
           return kind.clone();
         } else { return Type::None };
       },
+      Expr::Object { kind, args } => {
+        let object = if let Some(kind) = self.types.get(&kind.text) {
+          kind.clone()
+        } else {
+          self.error(expr, "symbol not in scope", format!("{kind} is not a defined type in the current scope."));
+          return Type::None
+        };
+
+        return object;
+      },
       Expr::Wrapper { expr } => self.get_type(expr),
       Expr::Argument { kind, .. } => self.get_type(kind),
       Expr::TypeRef { base, arrays } => {
@@ -288,7 +299,7 @@ impl TypeChecker {
       { val_t.clone() };
 
 
-    if kind != val_t {
+    if kind != val_t && val_t != Type::NullVoid {
       self.error(node, "mismatched types", format!("{name} was declared to be a {kind}, but is assigned to be a {val_t}."))
     }
 
@@ -307,16 +318,21 @@ impl TypeChecker {
     } else { symbol.unwrap() };
 
     let symbol = if let Symbol::Variable { kind, mutable } = symbol {
+      println!("{mutable}");
       (kind, mutable)
     } else {
       self.error(node, "invalid operation", format!("{name} is not a mutable variable."));
       return;
     };
 
-    if symbol.0 != &kind {
+    if symbol.0 != &kind && symbol.0 != &Type::NullVoid {
       self.error(node, "mismatched types", format!("{name} was declared to be a {}, but is attempting to be a {}.", symbol.0, kind));
       return;
     }
+
+    if !symbol.1 {
+      self.error(node, "invalid operation", format!("{name} was declared to be a constant, you cannot modify its value"));
+    } 
   }
   fn check_function(&mut self, node: &Node) {
     let (name, kind, args, body) = if let Node::FuncDefinition { name, kind, args, body } = node {
@@ -391,7 +407,7 @@ impl TypeChecker {
         let var = self.lookup(&value.text);
 
         if var.is_none() {
-          self.error(expr, "symbol not found", format!("{} is either not in scope or not defined", value.text));
+          self.error(expr, "symbol not found", format!("{} is not defined within the current scope", value.text));
         };
       },
       Expr::Lambda { emit, body, .. } => {

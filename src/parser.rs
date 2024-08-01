@@ -283,7 +283,7 @@ impl Parser {
 
       Class::SemiColon => { self.advance(); self.parse_node() }
 
-      Class::LeftBrace => { term = false; self.parse_compound() },
+      Class::LeftBrack => { term = false; self.parse_compound() },
 
       Class::Eof => Node::NullVoid,
 
@@ -311,8 +311,9 @@ impl Parser {
     let kind = if self.current().class == Class::Colon 
       { self.advance(); Some(self.fetch_typeref()) } else { None };
 
-    self.consume(Class::Assign, "expected '=' for constant assignment");
-    let value = self.fetch_expr();
+    let value = if self.current().class == Class::Assign 
+      { self.advance(); self.fetch_expr() } else 
+      { Expr::NullVoid };
 
     Node::SetAssign { name, kind, value }
   }
@@ -323,8 +324,9 @@ impl Parser {
     let kind = if self.current().class == Class::Colon 
       { self.advance(); Some(self.fetch_typeref()) } else { None };
 
-    self.consume(Class::Assign, "expected '=' for constant assignment");
-    let value = self.fetch_expr();
+    let value = if self.current().class == Class::Assign 
+      { self.advance(); self.fetch_expr() } else 
+      { Expr::NullVoid };
 
     Node::VarAssign { name, kind, value }
   }
@@ -384,8 +386,8 @@ impl Parser {
 
     loop {
       match self.current().class {
-        Class::Eof => { self.error(&self.current(), "expected body delim ']', found <eof>") },
-        Class::RightBrace => { self.advance(); break; },
+        Class::Eof => { self.error(&self.current(), "expected body delim '}', found <eof>") },
+        Class::RightBrack => { self.advance(); break; },
         _ => body.push(self.parse_node())
       }
     };

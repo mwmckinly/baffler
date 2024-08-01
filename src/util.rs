@@ -1,7 +1,7 @@
 use std::process::exit;
 
 use crate::syntax::{Expr, Node};
-use crate::token::Token; 
+use crate::token::{Class, Token}; 
 
 pub trait Color {
   fn color(&self, f: usize) -> String;
@@ -60,21 +60,30 @@ impl SourceInfo for Token {
 impl SourceInfo for Expr {
   fn info(&self) -> (usize, usize, usize) {
     match self {
-      Expr::String { value } |
+      Expr::String { value } => {
+        let base = value.info();
+        ( base.0, base.1, base.2 + 2 )
+      },
       Expr::Number { value } |
       Expr::Boolean { value } |
       Expr::VarRef { value } => value.info(),
-      Expr::Lambda { args, body, .. } => {
-        let start = args.last().unwrap().info();
-        let stop = body.info();
+      Expr::Lambda { args, .. } => {
+        let start = args.first().unwrap().info();
+        let stop = args.last().unwrap().info();
 
-        ( start.0, start.1 - 1, ( stop.2 + stop.1 - start.1 ) )
+        ( start.0, start.1 - 1, ( stop.2 + stop.1 - start.1 ) + 2)
+      },
+      Expr::Object { kind, args } => {
+        let start = kind.info();
+        let stop = args.last().map_or(start, |arg| arg.info());
+
+        ( start.0, start.1, ( stop.2 + stop.1 - start.1 ) + 2 )
       },
       Expr::Array { items } => {
         let start = items.get(0).unwrap().info();
         let stop = items.last().unwrap().info();
 
-        (start.0, start.1 - 1, (stop.2 + stop.1 - start.1) + 1)
+        (start.0, start.1 - 1, (stop.2 + stop.1 - start.1) + 2)
       },
       Expr::ArrItem { parent, index } => {
         let start = parent.info();
@@ -91,14 +100,17 @@ impl SourceInfo for Expr {
       },
       Expr::FunCall { name, args } => {
         let start = name.info();
-        let stop = args.last().map_or(start, |arg| arg.info());
+        let stop = args.last().map_or(
+          (start.0, start.1 + 2, 3), 
+          |arg| arg.info()
+        );
 
         ( start.0, start.1, ( stop.2 + stop.1 - start.1 ) + 1 )
       },
       Expr::Wrapper { expr } => {
         let stats = expr.info();
 
-        ( stats.0, stats.1 - 1, stats.2 + 1 )
+        ( stats.0, stats.1 - 1, stats.2 + 2 )
       },
       Expr::Argument { name, kind } => {
         let start = name.info();
@@ -162,6 +174,59 @@ impl SourceInfo for Node {
       }
 
       _ => (0, 0, 0),
+    }
+  }
+}
+
+pub struct Location {
+  line: usize,
+  column: usize,
+  length: usize,
+}
+
+pub trait GetArea {
+  fn area(&self) -> Location;
+}
+
+impl GetArea for Token {
+  fn area(&self) -> Location {
+    let modifier = if self.class == Class::String 
+      { 2 } else { 0 };
+    Location { line: self.index[0], column: self.index[1], length: self.text.len() + modifier }
+  }
+}
+
+impl GetArea for Expr {
+  fn area(&self) -> Location {
+    let modifier: usize = match self {
+      Expr::Lambda { ..} |
+      Expr::Array { .. } |
+      Expr::ArrItem { .. } |
+      Expr::FunCall { .. } |
+      Expr::Wrapper { .. } => 2,
+      Expr::Argument { .. } |
+      Expr::Attribute { .. } => 1,
+      _ => 0
+    };
+
+    match self {
+      Expr::String { value } |
+      Expr::Number { value } |
+      Expr::Boolean { value } |
+      Expr::VarRef { value } => value.area(),
+      Expr::Lambda { args, emit, body } => todo!(),
+      Expr::Object { kind, args } => todo!(),
+      Expr::Array { items } => todo!(),
+      Expr::ArrItem { parent, index } => todo!(),
+      Expr::MathOper { lhs, rhs, oper } => todo!(),
+      Expr::BoolOper { lhs, rhs, oper } => todo!(),
+      Expr::FunCall { name, args } => todo!(),
+      Expr::Wrapper { expr } => todo!(),
+      Expr::Argument { name, kind } => todo!(),
+      Expr::TypeRef { base, arrays } => todo!(),
+      Expr::TypeCast { from, to } => todo!(),
+      Expr::Attribute { parent, field } => todo!(),
+      Expr::NullVoid => todo!(),
     }
   }
 }

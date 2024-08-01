@@ -5,7 +5,8 @@ use std::fs::write;
 use checker::TypeChecker;
 use lexer::Lexer;
 use parser::Parser;
-use util::File;
+use syntax::Node;
+use util::{Color, File};
 
 mod token;
 mod lexer;
@@ -32,7 +33,12 @@ fn parser(file: File) {
 fn analyze(file: File) {
 	let mut lexer = Lexer::init(file);
 	let mut parser = Parser::init(&mut lexer);
+
+	let nodes = if let Node::Compound { body } = parser.parse() {
+		body
+	} else { panic!(); };
+
 	let mut analyzer = TypeChecker::init(&mut parser);
 
-	analyzer.check();
+	analyzer.message(&nodes[0], "info".color(36), "", "message");
 }

@@ -13,6 +13,7 @@ pub enum Expr {
   Boolean { value: Token },
   VarRef { value: Token },
   Lambda { args: Vec<Expr>, emit: Value, body: Body },
+  Object { kind: Token, args: Vec<Expr> },
 
   Array { items: Vec<Expr> },
   ArrItem { parent: Value, index: Value },
@@ -35,6 +36,7 @@ impl fmt::Display for Expr {
       Expr::Boolean { value } => write!(f, "expr:bool<{}>", value.text),
       Expr::VarRef { value } => write!(f, "expr:ident<{}>", value.text),
       Expr::Lambda { args, emit, body } => write!(f, "expr:lambda<args: {}, type: {emit}, body: {body}>", args.len()),
+      Expr::Object { kind, .. } => write!(f, "expr:object<type: {}>", kind.text),
       Expr::Array { items } => write!(f, "expr:array<len: {}>", items.len()),
       Expr::ArrItem { parent, index } => write!(f, "expr:item<array: {}, index: {}>", parent, index),
       Expr::MathOper { lhs, rhs, oper } => write!(f, "expr:math-op<lhs: {lhs}, oper: {:?}, rhs: {rhs}>", oper.text),

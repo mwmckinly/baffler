@@ -1,7 +1,1 @@
-var age = 17;
-
-fun setAge(): str -> [
-  emit "max";
-]
-
-age = setAge();
+name as str;
