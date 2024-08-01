@@ -1,4 +1,7 @@
-object human [
-  name: str;
-  age: num;
+var age = 17;
+
+fun setAge(): str -> [
+  emit "max";
 ]
+
+age = setAge();

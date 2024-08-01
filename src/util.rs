@@ -1,6 +1,7 @@
 use std::process::exit;
 
-use crate::{syntax::{Expr, Node}, token::Token, visitor::{IRType, IRValue}};
+use crate::syntax::{Expr, Node};
+use crate::token::Token; 
 
 pub trait Color {
   fn color(&self, f: usize) -> String;
@@ -164,48 +165,3 @@ impl SourceInfo for Node {
     }
   }
 }
-
-
-trait ToIR {
-  fn ir_type(&self) -> IRType;
-}
-
-impl ToIR for Expr {
-  fn ir_type(&self) -> IRType {
-    match self {
-      Expr::String { .. } => IRType::String,
-      Expr::Number { .. } => IRType::Number,
-      Expr::Boolean { .. } => IRType::Boolean,
-      Expr::Lambda { emit, .. } => emit.ir_type(),
-      Expr::Array { items } => IRType::Array { of: Box::new(items[0].ir_type()) },
-      Expr::ArrItem { parent, .. } => {
-        match parent.ir_type() {
-          IRType::Array { of } => *of,
-          IRType::String => IRType::String,
-          _ => IRType::Null
-        }
-      },
-      Expr::MathOper { lhs, .. } => lhs.ir_type(),
-      Expr::BoolOper { .. } => IRType::Boolean,
-      Expr::Wrapper { expr } => expr.ir_type(),
-      Expr::Argument { kind, .. } => kind.ir_type(),
-      Expr::TypeRef { base, arrays } => {
-        let mut kind: IRType = match base.text.as_str() {
-          "str" => IRType::String,
-          "num" => IRType::Number,
-          "null" => IRType::Null,
-          "bool" => IRType::Boolean,
-          _ => IRType::Null,
-        };
-
-        for _ in 0..*arrays { kind = IRType::Array { of: Box::new(kind) } }
-
-        kind
-      },
-      Expr::TypeCast { to, .. } => to.ir_type(),
-      _ => IRType::Null
-    }
-  }
-}
-
-

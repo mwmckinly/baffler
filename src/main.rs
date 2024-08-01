@@ -2,22 +2,23 @@
 
 use std::fs::write;
 
+use checker::TypeChecker;
 use lexer::Lexer;
 use parser::Parser;
 use util::File;
-use visitor::Analyzer;
 
 mod token;
 mod lexer;
 mod util;
 mod syntax;
 mod parser;
-mod visitor;
+mod runtime;
+mod checker;
 
 fn main() {
 	let file = File::new("app/main.baf".into());
 
-	parser(file);
+	analyze(file);
 }
 
 #[allow(unused)]
@@ -31,7 +32,7 @@ fn parser(file: File) {
 fn analyze(file: File) {
 	let mut lexer = Lexer::init(file);
 	let mut parser = Parser::init(&mut lexer);
-	let mut analyzer = Analyzer::init(&mut parser);
+	let mut analyzer = TypeChecker::init(&mut parser);
 
-	analyzer.lookup("name");
+	analyzer.check();
 }
