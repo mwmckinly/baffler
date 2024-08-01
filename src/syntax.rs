@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::HashMap, fmt};
 use serde::Serialize;
 
 use crate::token::Token;
@@ -6,7 +6,7 @@ use crate::token::Token;
 type Value = Box<Expr>;
 type Body = Box<Node>;
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum Expr {
   String { value: Token },
   Number { value: Token },
@@ -50,13 +50,16 @@ impl fmt::Display for Expr {
   }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum Node {
   SetAssign { name: Token, kind: Option<Expr>, value: Expr },
   VarAssign { name: Token, kind: Option<Expr>, value: Expr },
   ModifyVar { name: Token, value: Expr },
 
   FuncDefinition { name: Token, kind: Expr, args: Vec<Expr>, body: Body },
+  DeclareObject { name: Token, fields: HashMap<String, (Token, Expr)> },
+  ObjectField { field: Token, kind: Expr },
+  ObjExtention { name: Token, body: Body },
   ValueEmission { expr: Expr },
   Compound { body: Vec<Node> },
 
@@ -74,6 +77,9 @@ impl Node {
       Node::VarAssign { .. } => "var-assign",
       Node::ModifyVar { .. } => "modify-var",
       Node::FuncDefinition { .. } => "func-define",
+      Node::DeclareObject { .. } => "declare-obj",
+      Node::ObjectField { .. } => "obj-field",
+      Node::ObjExtention { .. } => "obj-extention",
       Node::ValueEmission { .. } => "emit-value",
       Node::Compound { .. } => "compound",
       Node::IfStatement { .. } => "if-statement",
@@ -98,6 +104,9 @@ impl fmt::Display for Node {
       },
       Node::VarAssign { name, kind, value } => write!(f, "node:var<name: {}, value: {}, type?: {:?}>", name.text, value, kind),
       Node::ModifyVar { name, value } => write!(f, "node:modify<name: {}, value: {}>", name.text, value),
+      Node::DeclareObject { name, fields } => write!(f, "node:object<name: {}, fields: {}>", name.text, fields.len()),
+      Node::ObjectField { field, kind } => write!(f, "node:attr<name: {}, type: {}>", field.text, kind),
+      Node::ObjExtention { name, body } => write!(f, "node:extention<name: {}, funcs: {}>", name.text, body),
       Node::FuncDefinition { name, kind, args, body } 
         => write!(f, "node:fun-def<name: {}, num-args: {}, type: {}, body: {}>", name.text, args.len(), kind, body),
       Node::ValueEmission { expr } => write!(f, "node:emit<value: {}>", expr),

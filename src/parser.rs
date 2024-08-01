@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt::Display;
 
 use crate::lexer::Lexer;
@@ -240,6 +241,24 @@ impl Parser {
 
     return items; 
   }
+  fn collect_body<F: Fn(&mut Parser) -> Node>(&mut self, fetch: F) -> Vec<Node> {
+    self.consume(Class::LeftBrace, "expected '[' to start compound node");
+    let mut body = vec![];
+
+    loop {
+      let token = self.current();
+      match token.class {
+        Class::SemiColon => self.advance(),
+        Class::Eof => {
+          self.error(&token, "expected ']' to terminate compound node, found <eof>"); break;
+        },
+        Class::RightBrace => { self.advance(); break; },
+        _ => body.push(fetch(self))
+      }
+    }
+
+    return body;
+  }
   //=========== Statement Functions ============//
   fn parse_node(&mut self) -> Node {
     let mut term = true;
@@ -248,6 +267,8 @@ impl Parser {
     let node = match token.class {
       Class::Keyword => match token.text.as_str() {
         "fun" => { term = false; self.parse_func_define() }, 
+        "object" => { term = false; self.parse_obj_declare() }
+        "extend" => { term = false; self.parse_extention() }
         "while" => { term = false; self.parse_while_loop() },
         "if" => { term = false; self.parse_if_node() },
         "set" => self.parse_set_assign(),
@@ -313,6 +334,38 @@ impl Parser {
     let value = self.fetch_expr();
 
     Node::ModifyVar { name, value }
+  }
+  fn parse_obj_declare(&mut self) -> Node {
+    self.advance(); 
+    let name = self.consume(Class::Identifier, "expected identifier after 'object'"); 
+
+    let fields = self.collect_body(|s: &mut Parser| {
+      let field = s.consume(Class::Identifier, "expected field name");
+      s.consume(Class::Colon, "expected colon to seperate name and type");
+      let kind = s.fetch_typeref();
+
+      Node::ObjectField { field, kind }
+    });
+
+    let mut parts = HashMap::new();
+
+    for ele in fields {
+      let ( field, kind ) = if let Node::ObjectField { field, kind } = ele {
+        ( field, kind )
+      } else { unreachable!() };
+
+      parts.insert(field.text.clone(), (field, kind));
+    }
+
+    Node::DeclareObject { name, fields: parts }
+  }
+  fn parse_extention(&mut self) -> Node {
+    self.advance();
+    let obj = self.consume(Class::Identifier, "expected identifier after `extend`");
+    let funcs = self.collect_body(|this: &mut Parser| { this.parse_func_define() });
+    let funcs = Box::new(Node::Compound { body: funcs });
+
+    Node::ObjExtention { name: obj, body: funcs }
   }
   fn parse_func_define(&mut self) -> Node {
     self.advance();

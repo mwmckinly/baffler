@@ -3,7 +3,7 @@ use core::fmt;
 use serde::Serialize;
 use crate::util::Color;
 
-#[derive(Debug, PartialEq, Eq, Serialize, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Serialize, Clone, Copy, Hash)]
 #[serde(rename_all = "kebab-case")]
 pub enum Class {
   Identifier, Keyword,
@@ -25,7 +25,7 @@ impl fmt::Display for Class {
   }
 }
 
-#[derive(Debug, PartialEq, Eq, Serialize, Clone)]
+#[derive(Debug, PartialEq, Eq, Serialize, Clone, Hash)]
 pub struct Token {
   pub text: String,
   pub class: Class,

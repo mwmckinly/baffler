@@ -56,7 +56,8 @@ impl Lexer {
 
         let class = match text.as_str() {
           "fun" | "set" | "var" | "as" |
-          "use" | "emit" | "if" | "else" => Class::Keyword,
+          "use" | "emit" | "if" | "else" |
+          "object" | "extend" => Class::Keyword,
           "null" => Class::Null,
           "true" | "false" => Class::Boolean,
           _ => Class::Identifier,

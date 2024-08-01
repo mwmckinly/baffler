@@ -17,7 +17,7 @@ mod visitor;
 fn main() {
 	let file = File::new("app/main.baf".into());
 
-	analyze(file);
+	parser(file);
 }
 
 #[allow(unused)]

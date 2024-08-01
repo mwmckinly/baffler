@@ -1,17 +1,4 @@
-set name = 123;
-
-# fun fib(val: num): num -> [
-#   if val <= 1
-#     emit val;
-#   else
-#     emit ( fib(val - 1) + fib(val - 2) );
-# ]
-# 
-# fun main(): num -> [
-#   set name = "Max M";
-#   var age = 17;
-# 
-#   if date == "11/09"
-#     age += 1;
-# ]
-# 
+object human [
+  name: str;
+  age: num;
+]
