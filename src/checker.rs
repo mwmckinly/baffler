@@ -38,7 +38,17 @@ impl Scope {
     self.symbols.insert(name.to_string(), symbol);
   }
   pub fn get<S:ToString>(&self, name: S) -> Option<&Symbol> {
-    self.symbols.get(&name.to_string())
+    let symbol = self.symbols.get(&name.to_string());
+
+    if symbol.is_some() {
+      return symbol;
+    }
+
+    if self.parent.is_some() {
+      return self.parent.as_ref().unwrap().get(name);
+    }
+
+    return None;
   }
 }
 
@@ -50,6 +60,8 @@ pub struct TypeChecker {
 
   filename: String,
   source: Vec<String>,
+
+  errors: usize,
 }
 
 impl TypeChecker {
@@ -70,7 +82,7 @@ impl TypeChecker {
     }).into_iter().collect();
 
     TypeChecker {
-      program,
+      program, errors: 0,
       scope: Scope { parent: None, symbols: HashMap::new() },
       types: primatives,
       filename: file.name(),
@@ -215,7 +227,7 @@ impl TypeChecker {
           return kind.clone();
         } else { return Type::None };
       },
-      Expr::Object { kind, args } => {
+      Expr::Object { kind, args: _ } => {
         let object = if let Some(kind) = self.types.get(&kind.text) {
           kind.clone()
         } else {

@@ -102,7 +102,7 @@ impl Parser {
       }
     };
 
-    while [Class::Colon, Class::BinaryOp, Class::BooleanOp, Class::LeftBrace].has(&self.current().class) {
+    while [Class::Colon, Class::BinaryOp, Class::BooleanOp, Class::LeftBrace, Class::Keyword].has(&self.current().class) {
       expr = match self.current().class {
         Class::Colon => self.build_attribute(Box::new(expr)),
         Class::BinaryOp => self.build_math_oper(Box::new(expr)),

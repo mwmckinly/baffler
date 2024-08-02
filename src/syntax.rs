@@ -1,3 +1,6 @@
+#![allow(unused)]
+
+
 use std::{collections::HashMap, fmt};
 use serde::Serialize;
 
@@ -51,6 +54,7 @@ impl fmt::Display for Expr {
     }
   }
 }
+
 
 #[derive(Debug, Clone, Serialize)]
 pub enum Node {

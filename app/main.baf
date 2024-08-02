@@ -1,1 +1,5 @@
-name as str;
+set name: str = "Max";
+
+fun main() -> {
+  set name = 17;
+}

@@ -1,7 +1,7 @@
 use std::process::exit;
 
 use crate::syntax::{Expr, Node};
-use crate::token::{Class, Token}; 
+use crate::token::Token; 
 
 pub trait Color {
   fn color(&self, f: usize) -> String;
@@ -25,7 +25,6 @@ impl<T:PartialEq> Has<T> for [T] {
 pub struct File {
   name: String, text: String,
 }
-
 impl File {
   pub fn new(name: String) -> File {
     let text = if let Ok(text) = std::fs::read_to_string(&name) 
@@ -51,7 +50,6 @@ impl File {
 pub trait SourceInfo {
   fn info(&self) -> (usize, usize, usize);
 }
-
 impl SourceInfo for Token {
   fn info(&self) -> (usize, usize, usize) {
     ( self.index[0], self.index[1], self.text.len() )
@@ -129,7 +127,7 @@ impl SourceInfo for Expr {
         let start = from.info();
         let stop = to.info();
 
-        ( start.0, start.1, ( stop.2 + stop.1 - start.1 ) + 4 )
+        ( start.0, start.1, ( stop.2 + stop.1 - start.1 )  )
       },
       Expr::Attribute { parent, field } => {
         let start = parent.info();
@@ -141,92 +139,38 @@ impl SourceInfo for Expr {
     }
   }
 }
-
 impl SourceInfo for Node {
   fn info(&self) -> (usize, usize, usize) {
     match self {
       Node::SetAssign { name, value, .. }
       | Node::VarAssign { name, value, .. } => {
-          let (start_line, start_col, _) = name.info();
-          let (_, end_col, end_len) = value.info();
-          (start_line, start_col, end_col + end_len - start_col)
+        let (start_line, start_col, _) = name.info();
+        let (_, end_col, end_len) = value.info();
+        (start_line, start_col, end_col + end_len - start_col)
       }
 
       Node::ModifyVar { name, value } => {
-          let (start_line, start_col, _) = name.info();
-          let (_, end_col, end_len) = value.info();
-          (start_line, start_col, end_col + end_len - start_col)
+        let (start_line, start_col, _) = name.info();
+        let (_, end_col, end_len) = value.info();
+        (start_line, start_col, end_col + end_len - start_col)
       }
 
       Node::FuncDefinition { name, body, .. } => {
-          let (start_line, start_col, _) = name.info();
-          let (_, end_col, end_len) = body.info();
-          (start_line, start_col, end_col + end_len - start_col)
+        let (start_line, start_col, _) = name.info();
+        let (_, end_col, end_len) = body.info();
+        (start_line, start_col, end_col + end_len - start_col)
       }
 
       Node::ValueEmission { expr }
       | Node::Expression { expr } => expr.info(),
 
       Node::ImportPackage { path } => {
-          let (start_line, start_col, _) = path.first().map_or((0, 0, 0), |t| t.info());
-          let (_, end_col, end_len) = path.last().map_or((0, 0, 0), |t| t.info());
-          (start_line, start_col, end_col + end_len - start_col)
+        let (start_line, start_col, _) = path.first().map_or((0, 0, 0), |t| t.info());
+        let (_, end_col, end_len) = path.last().map_or((0, 0, 0), |t| t.info());
+        (start_line, start_col, end_col + end_len - start_col)
       }
 
       _ => (0, 0, 0),
-    }
-  }
-}
-
-pub struct Location {
-  line: usize,
-  column: usize,
-  length: usize,
-}
-
-pub trait GetArea {
-  fn area(&self) -> Location;
-}
-
-impl GetArea for Token {
-  fn area(&self) -> Location {
-    let modifier = if self.class == Class::String 
-      { 2 } else { 0 };
-    Location { line: self.index[0], column: self.index[1], length: self.text.len() + modifier }
-  }
-}
-
-impl GetArea for Expr {
-  fn area(&self) -> Location {
-    let modifier: usize = match self {
-      Expr::Lambda { ..} |
-      Expr::Array { .. } |
-      Expr::ArrItem { .. } |
-      Expr::FunCall { .. } |
-      Expr::Wrapper { .. } => 2,
-      Expr::Argument { .. } |
-      Expr::Attribute { .. } => 1,
-      _ => 0
-    };
-
-    match self {
-      Expr::String { value } |
-      Expr::Number { value } |
-      Expr::Boolean { value } |
-      Expr::VarRef { value } => value.area(),
-      Expr::Lambda { args, emit, body } => todo!(),
-      Expr::Object { kind, args } => todo!(),
-      Expr::Array { items } => todo!(),
-      Expr::ArrItem { parent, index } => todo!(),
-      Expr::MathOper { lhs, rhs, oper } => todo!(),
-      Expr::BoolOper { lhs, rhs, oper } => todo!(),
-      Expr::FunCall { name, args } => todo!(),
-      Expr::Wrapper { expr } => todo!(),
-      Expr::Argument { name, kind } => todo!(),
-      Expr::TypeRef { base, arrays } => todo!(),
-      Expr::TypeCast { from, to } => todo!(),
-      Expr::Attribute { parent, field } => todo!(),
-      Expr::NullVoid => todo!(),
     }
   }
 }
