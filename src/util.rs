@@ -129,7 +129,7 @@ impl SourceInfo for Expr {
         let start = from.info();
         let stop = to.info();
 
-        ( start.0, start.1, ( stop.2 + stop.1 - start.1 ) + 4 )
+        ( start.0, start.1, ( stop.2 + stop.1 - start.1 )  )
       },
       Expr::Attribute { parent, field } => {
         let start = parent.info();

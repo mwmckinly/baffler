@@ -1,1 +1,3 @@
-name as str;
+fun main() -> {
+  set name = "";
+}
