@@ -65,12 +65,6 @@ impl SourceInfo for Expr {
       Expr::Number { value } |
       Expr::Boolean { value } |
       Expr::VarRef { value } => value.info(),
-      Expr::Lambda { args, .. } => {
-        let start = args.first().unwrap().info();
-        let stop = args.last().unwrap().info();
-
-        ( start.0, start.1 - 1, ( stop.2 + stop.1 - start.1 ) + 2)
-      },
       Expr::Object { kind, args } => {
         let start = kind.info();
         let stop = args.last().map_or(start, |arg| arg.info());
@@ -155,9 +149,14 @@ impl SourceInfo for Node {
         (start_line, start_col, end_col + end_len - start_col)
       }
 
-      Node::FuncDefinition { name, body, .. } => {
+      Node::FuncDefinition { name, body, args, .. } => {
         let (start_line, start_col, _) = name.info();
-        let (_, end_col, end_len) = body.info();
+        let (_, end_col, end_len) = if args.len() != 0 {
+          let arg = args.last().unwrap();
+          arg.info()
+        } else {
+          ( 0, start_col, 2 )
+        };
         (start_line, start_col, end_col + end_len - start_col)
       }
 

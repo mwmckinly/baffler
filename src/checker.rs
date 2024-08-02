@@ -152,7 +152,6 @@ impl TypeChecker {
           Type::None
         }
       },
-      Expr::Lambda { emit, .. } => self.get_type(emit),
       Expr::Array { items } => {
         if items.len() == 0 {
           return Type::Array { of: Box::new(Type::None) }
@@ -400,7 +399,7 @@ impl TypeChecker {
 
     let mut attrs: HashMap<String, Type> = HashMap::new();
     fields.iter().for_each(|field| {
-      attrs.insert(field.0.to_string(), self.get_type(&field.1.1));
+      attrs.insert(field.0.text.clone(), self.get_type(&field.1));
     });
 
     self.types.insert(name, Type::Struct { fields: attrs });
@@ -421,32 +420,6 @@ impl TypeChecker {
         if var.is_none() {
           self.error(expr, "symbol not found", format!("{} is not defined within the current scope", value.text));
         };
-      },
-      Expr::Lambda { emit, body, .. } => {
-        let body = if let Node::Compound { body } = *body.clone()
-          { body } else { vec![*body.clone()] };
-
-        let emit = self.get_type(&emit);
-        
-        let mut has_emmission = false;
-        self.enter();
-        body.iter().for_each(|node| {
-          if let Node::ValueEmission { expr } = node {
-            let kind = self.get_type(expr);
-
-            if emit != kind {
-              self.error(node, "mismatched types", format!("expected a value of type {emit}, but found {kind}"))
-            }
-
-            has_emmission = true;
-          }
-          self.check_node(node);
-        });
-        self.leave();
-
-        if emit != Type::NullVoid && !has_emmission {
-          self.error(expr, "mismatched types", format!("expected to emit a {emit}, nothing was emmitted."))
-        }
       },
       Expr::Array { items } => {
         if items.len() == 0 { return; }

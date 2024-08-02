@@ -15,7 +15,6 @@ pub enum Expr {
   Number { value: Token },
   Boolean { value: Token },
   VarRef { value: Token },
-  Lambda { args: Vec<Expr>, emit: Value, body: Body },
   Object { kind: Token, args: Vec<Expr> },
 
   Array { items: Vec<Expr> },
@@ -38,7 +37,6 @@ impl fmt::Display for Expr {
       Expr::Number { value } => write!(f, "expr:num<{}>", value.text),
       Expr::Boolean { value } => write!(f, "expr:bool<{}>", value.text),
       Expr::VarRef { value } => write!(f, "expr:ident<{}>", value.text),
-      Expr::Lambda { args, emit, body } => write!(f, "expr:lambda<args: {}, type: {emit}, body: {body}>", args.len()),
       Expr::Object { kind, .. } => write!(f, "expr:object<type: {}>", kind.text),
       Expr::Array { items } => write!(f, "expr:array<len: {}>", items.len()),
       Expr::ArrItem { parent, index } => write!(f, "expr:item<array: {}, index: {}>", parent, index),
@@ -63,7 +61,7 @@ pub enum Node {
   ModifyVar { name: Token, value: Expr },
 
   FuncDefinition { name: Token, kind: Expr, args: Vec<Expr>, body: Body },
-  DeclareObject { name: Token, fields: HashMap<String, (Token, Expr)> },
+  DeclareObject { name: Token, fields: HashMap<Token, Expr> },
   ObjectField { field: Token, kind: Expr },
   ObjExtention { name: Token, body: Body },
   ValueEmission { expr: Expr },

@@ -91,7 +91,6 @@ impl Parser {
       Class::Boolean => self.fetch_literal(),
 
       Class::LeftBrace => self.fetch_array(),
-      Class::LeftBrack => self.build_lambda(),
       Class::LeftParen => self.fetch_wrapper(),
 
       Class::Null => Expr::NullVoid,
@@ -182,20 +181,6 @@ impl Parser {
     
     Expr::TypeCast { from, to }
   }
-  fn build_lambda(&mut self) -> Expr {
-    let args = self.collect_series(
-      [Class::LeftBrack, Class::RightBrack], 
-      Self::fetch_argument
-    ); 
-
-    let emit = if self.current().class == Class::Colon 
-      { self.advance(); self.fetch_typeref() } else { Expr::NullVoid };
-
-    self.consume(Class::Arrow, "expected '->' after almbda args");
-    let body = Box::new(self.parse_node());
-
-    Expr::Lambda { args, emit: Box::new(emit), body }
-  }
   fn build_fun_call(&mut self) -> Expr {
     let name = self.current(); self.advance();
     let args = self.collect_series(
@@ -241,7 +226,7 @@ impl Parser {
 
     return items; 
   }
-  fn collect_body<F: Fn(&mut Parser) -> Node>(&mut self, fetch: F) -> Vec<Node> {
+  fn collect_body<T, F: Fn(&mut Parser) -> T>(&mut self, fetch: F) -> Vec<T> {
     self.consume(Class::LeftBrace, "expected '[' to start compound node");
     let mut body = vec![];
 
@@ -289,14 +274,6 @@ impl Parser {
 
       _ => Node::Expression { expr: self.fetch_expr() }
     };
-
-    match &node {
-      Node::SetAssign { value, .. } => if let Expr::Lambda { .. } = value { term = false },
-      Node::VarAssign { value, .. } => if let Expr::Lambda { .. } = value { term = false },
-      Node::ModifyVar { value, .. } => if let Expr::Lambda { .. } = value { term = false },
-      _ => (),
-    }
-
 
     if term {
       self.consume(Class::SemiColon, "expected ';' after statement");
@@ -346,17 +323,13 @@ impl Parser {
       s.consume(Class::Colon, "expected colon to seperate name and type");
       let kind = s.fetch_typeref();
 
-      Node::ObjectField { field, kind }
+      (field, kind)
     });
 
     let mut parts = HashMap::new();
 
-    for ele in fields {
-      let ( field, kind ) = if let Node::ObjectField { field, kind } = ele {
-        ( field, kind )
-      } else { unreachable!() };
-
-      parts.insert(field.text.clone(), (field, kind));
+    for (field, kind) in fields {
+      parts.insert(field, kind);
     }
 
     Node::DeclareObject { name, fields: parts }

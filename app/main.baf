@@ -1,5 +1,7 @@
-set name: str = "Max";
+var age = 17;
 
-fun main() -> {
-  set name = 17;
+fun main(age: num): str -> {
+  emit "Max";
 }
+
+age = main(age, 1);
