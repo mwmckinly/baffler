@@ -1,11 +1,11 @@
 use serde::Serialize;
-use std::fmt::{Display, Debug};
+use std::{fmt::{Debug, Display}, hash::Hash};
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 pub struct Token {
-  class: Class,
-  text: String,
-  coords: [usize; 2]
+  pub class: Class,
+  pub text: String,
+  pub coords: [usize; 2]
 }
 
 impl Token {
@@ -20,7 +20,14 @@ impl Display for Token {
   }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq)]
+impl Hash for Token {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    self.class.hash(state);
+    self.text.hash(state);
+  }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "kebab-case")]
 pub enum Class {
   Identifier, Keyword,

@@ -20,11 +20,11 @@ impl Lexer {
 
     return lexer;
   }
-  pub fn tokenize(mut self) -> Vec<Token> {
+  pub fn tokenize(mut self) -> (Vec<Token>, Box<Logger>) {
     while self.pointer < self.source.len() 
       { self.get_next(); }
     
-    return self.tokens;
+    return (self.tokens, self.logger);
   }
 
   fn advance(&mut self) {
@@ -58,8 +58,8 @@ impl Lexer {
         let class = match text.as_str() {
           "true" | "false" => Class::Bool,
 
-          "use" | "set" | "var" |
-          "emit" | "fun" => Class::Keyword,
+          "use" | "set" | "var" | "emit" | "if" | "else"
+            => Class::Keyword,
           
           _ => Class::Identifier,
         };
@@ -114,7 +114,7 @@ impl Lexer {
       '=' => {
         self.advance();
         match self.current() {
-          '=' => self.append("==", Class::BoolOp, coords),
+          '=' => {self.advance(); self.append("==", Class::BoolOp, coords) },
           _ => self.append("=", Class::Assign, coords),
         }
       },

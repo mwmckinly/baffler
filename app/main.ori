@@ -1,3 +1,8 @@
-set func = {  } -> num {
-  
+set name = "max";
+var age = { year: num } -> num {
+  emit year - 2006;
 };
+
+var class = if name == "max" { emit true; } else { emit false; };
+
+disp(age(2024));
