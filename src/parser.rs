@@ -62,8 +62,8 @@ impl Parser {
 
     return token;
   }
-  fn collect<T, F:Fn(&mut Parser) -> T>(&mut self, delims: [Class; 2], grab: F) -> Vec<T> {
-    let mut items: Vec<T> = vec![];
+  fn collect<F:Fn(&mut Parser) -> Expr>(&mut self, delims: [Class; 2], grab: F) -> Vec<Expr> {
+    let mut items: Vec<Expr> = vec![];
     let mut able: bool = true;
     self.consume(delims[0], format!("expected {} to start series.", delims[1]));
 
@@ -87,6 +87,10 @@ impl Parser {
       }
     }
 
+    if items.len() == 0 {
+      return vec![Expr::NullVoid { prev: self.tokenth(-1) }];
+    }
+
     return items;
   }
 }
@@ -100,7 +104,7 @@ impl Parser {
         "if" => self.build_conditional(),
         _ => {
           self.error("invalid expression header", format!("expected expression header, but found keyword {}", token.text), &token);
-          Expr::NullVoid
+          Expr::NullVoid { prev: self.tokenth(-1) }
         }
       },
 
@@ -115,11 +119,11 @@ impl Parser {
 
       Class::LeftBrace => self.fetch_array(),
       Class::LeftParen => self.fetch_wrapper(),
-      Class::LeftBrack => self.build_lambda(),
+      Class::LeftBrack => self.lambda_or_object(),
 
       _ => {
         self.error("invalid expression", format!("expected expression header, but found {}.", token.class), &token);
-        Expr::NullVoid
+        Expr::NullVoid { prev: self.tokenth(-1) }
       },
     };
 
@@ -216,19 +220,26 @@ impl Parser {
       rhs: rhs.wrap() 
     };
   }
-  fn build_lambda(&mut self) -> Expr {
-    let args = self.collect(
+  
+  fn lambda_or_object(&mut self) -> Expr {
+    let list = self.collect(
       [Class::LeftBrack, Class::RightBrack],
-      Self::build_argument
+      Self::build_pair
     );
+
+    match self.current().class {
+      Class::Arrow | Class::LeftBrack
+        => (),
+      _ => return Expr::Object { attrs: list }
+    };
 
     let kind = if self.current().class == Class::Arrow {
       self.advance(); self.fetch_typeref()
-    } else { Expr::NullVoid }.wrap();
+    } else { Expr::NullVoid { prev: self.tokenth(-1) } }.wrap();
 
     let body = self.parse_body().wrap();
 
-    return Expr::Lambda { args, kind, body }
+    return Expr::Lambda { args: list, kind, body }
   }
   fn build_conditional(&mut self) -> Expr {
     self.advance(); 
@@ -238,16 +249,18 @@ impl Parser {
 
     let other = if self.current().text.as_str() == "else" {
       self.advance(); self.parse_body()
-    } else { Node::Expression { expr: Expr::NullVoid } }.wrap();
+    } else { Node::Expression { expr: Expr::NullVoid { prev: self.tokenth(-1) } } }.wrap();
 
     Expr::IfExpr { cond, body, other }
   }
-  fn build_argument(&mut self) -> Expr {
+  fn build_pair(&mut self) -> Expr {
     let name = self.consume(Class::Identifier, "expected argument name");
     self.consume(Class::Colon, "expected ':' to divide param name and type.");
-    let kind = self.fetch_typeref().wrap();
+    let rhs = if self.current().class == Class::Identifier 
+      { self.fetch_typeref() } else 
+      { self.expect_expr() }.wrap();
 
-    return Expr::Argument { name, kind }
+    return Expr::TypePair { name, kind: rhs }
   }
 }
 
@@ -277,15 +290,16 @@ impl Parser {
   
   fn parse_object_dec(&mut self) -> Node {
     self.advance(); let name = self.grab();
+    
     let attrs = self.collect([Class::LeftBrack, Class::RightBrack], |s| {
       let name = s.consume(Class::Identifier, "expected attribute name");
       s.consume(Class::Colon, "expected ':' to divide attr name and type");
-      let kind = s.fetch_typeref();
+      let kind = s.fetch_typeref().wrap();
 
-      (name, kind)
+      Expr::TypePair { name, kind }
     }).into_iter().collect();
 
-    return Node::ObjectDec { name, attrs };
+    return Node::DeclareType { name, attrs };
   }
   fn parse_set_assign(&mut self) -> Node {
     self.advance();
@@ -340,6 +354,12 @@ impl Parser {
         _ => body.push(self.parse_node())
       }
     };
+
+    if body.len() == 0 {
+      return Node::Compound { value: vec![
+        Node::Expression { expr: Expr::NullVoid { prev: self.tokenth(-1) } }
+      ] }
+    }
 
     return Node::Compound { value: body };
   }

@@ -49,7 +49,8 @@ impl Lexer {
     let coords = self.coords;
 
     match char {
-      _ if char.is_ascii_alphabetic() => {
+      _ if char.is_ascii_alphabetic() ||
+            char == '_' => {
         let mut text = String::new();
         while self.current().is_ascii_alphanumeric() || self.current() == '_' {
           text.push(self.current()); self.advance();
@@ -58,7 +59,7 @@ impl Lexer {
         let class = match text.as_str() {
           "true" | "false" => Class::Bool,
 
-          "use" | "set" | "var" | "emit" | "if" | "else"
+          "use" | "set" | "var" | "emit" | "if" | "else" | "type"
             => Class::Keyword,
           
           _ => Class::Identifier,

@@ -110,14 +110,14 @@ impl Analyzer {
 
 
 impl Analyzer {
-  pub fn error<S:ToString, V:ToString, C:Coords>(&self, header: S, message: V, spot: C) -> String {
-    return self.logger.error(header, message.to_string(), spot);
+  pub fn error<S:ToString, V:ToString, C:Coords>(&self, header: S, message: V, spot: C) {
+    println!("{}", self.logger.error(header, message.to_string(), spot));
   }
-  pub fn inform<S:ToString, V:ToString, C:Coords>(&self, header: S, message: V, spot: C) -> String {
-    return self.logger.inform(header, message.to_string(), spot);
+  pub fn inform<S:ToString, V:ToString, C:Coords>(&self, header: S, message: V, spot: C) {
+    println!("{}", self.logger.error(header, message.to_string(), spot));
   }
-  pub fn warn<S:ToString, V:ToString, C:Coords>(&self, header: S, message: V, spot: C) -> String {
-    return self.logger.warn(header, message.to_string(), spot);
+  pub fn warn<S:ToString, V:ToString, C:Coords>(&self, header: S, message: V, spot: C) {
+    println!("{}", self.logger.error(header, message.to_string(), spot));
   }
   
   fn lookup<S:ToString>(&self, name: S) -> Option<&Symbol> {
@@ -135,24 +135,24 @@ impl Analyzer {
       Node::VarAssign { .. } => self.eval_assignment(node, true),
       Node::ChangeVal { .. } => self.eval_modification(node),
       Node::ImportLib { .. } => self.eval_import(node),
-      Node::ObjectDec { .. } => self.eval_object(node),
-      Node::Compound { .. } => self.eval_compound(node),
+      Node::DeclareType { .. } => self.eval_object(node),
+      Node::Compound { .. } => return self.eval_compound(node),
 
-      Node::EmitValue { value } => return self.get_type(value),
-      Node::Expression { expr } => return self.get_type(expr),
+      Node::EmitValue { value } => return self.eval_expression(value),
+      Node::Expression { expr } => return self.eval_expression(expr),
     }
     return Type::NullVoid;
   }
 
   fn eval_assignment(&mut self, node: &Node, mutable: bool) {
     let (name, kind) = match node {
-      Node::SetAssign { name, value } => ( name.clone(), self.get_type(value) ),
-      Node::VarAssign { name, value } => ( name.clone(), self.get_type(value) ),
+      Node::SetAssign { name, value } => ( name.clone(), self.eval_expression(value) ),
+      Node::VarAssign { name, value } => ( name.clone(), self.eval_expression(value) ),
       _ => unreachable!()
     };
 
     if self.lookup(&name.text).is_some() {
-      self.error("symbol already exists", format!("{} has already been declared", &name.text), &name);
+      self.error("symbol already exists", format!("{:?} has already been declared", &name.text), &name);
       return;
     }
 
@@ -160,7 +160,7 @@ impl Analyzer {
   }
   fn eval_modification(&mut self, node: &Node) {
     let (name, value) = if let Node::ChangeVal { name, value } = node {
-      (name.clone(), self.get_type(value))
+      (name.clone(), self.eval_expression(value))
     } else { unreachable!() };
 
     let res = self.lookup(&name.text);
@@ -190,19 +190,19 @@ impl Analyzer {
     let path = if let Node::ImportLib { path } = node.clone()
       { path.clone() } else { unreachable!() };
 
-    let path = path.iter().map(|x| {
+    let path_s = path.iter().map(|x| {
       x.text.clone()
     }).collect::<Vec<String>>().join("/") + ".ori";
 
-    let res = if let Ok(bool) = std::fs::exists(&path) 
+    let res = if let Ok(bool) = std::fs::exists(&path_s) 
       { bool } else { false };
 
     if !res {
-      self.error("invalid path", format!("{path} is not a valid filepath."), node);
+      self.error("invalid path", format!("{path_s} is not a valid filepath."), path.as_slice());
     }
   }
   fn eval_object(&mut self, node: &Node) {
-    let (name, attrs) = if let Node::ObjectDec { name, attrs } = node 
+    let (name, attrs) = if let Node::DeclareType { name, attrs } = node 
       { (name.clone(), attrs.clone()) } else { unreachable!() };
 
     if self.lookup(&name.text).is_some() {
@@ -210,29 +210,40 @@ impl Analyzer {
       return;
     }
 
-    let symbol = Type::Object { attrs: attrs.iter().map(|(x, y)| {
-      (x.text.clone(), self.get_type(y))
+    let symbol = Type::Object { attrs: attrs.iter().map(|attr| {
+      let (name, kind) = if let Expr::TypePair { name, kind } = attr {
+        ( name.text.clone(), self.eval_expression(kind) )
+      } else { unreachable!() };
+
+      (name, kind)
     }).collect() };
 
     self.append(name, Symbol::TypeRef { kind: symbol });
   }
-  fn eval_compound(&mut self, node: &Node) {
+  fn eval_compound(&mut self, node: &Node) -> Type {
     let body = if let Node::Compound { value } = node 
       { value } else { unreachable!() };
 
-    for node in body 
-      { self.evaluate(node); }
+    let mut kind = Type::NullVoid;
+
+    for node in body {
+      if let Node::EmitValue { value } = node {
+        kind = self.eval_expression(value)
+      }
+      self.evaluate(node); 
+    }
+
+    return kind;
   }
   
-
-  fn get_type(&mut self, expr: &Expr) -> Type {
+  fn eval_expression(&mut self, expr: &Expr) -> Type {
     let kind = match expr {
       Expr::String { .. } => Type::String,
       Expr::Number { .. } => Type::Number,
       Expr::Boolean { .. } => Type::Boolean,
       Expr::VarRef { value } => {
         let res = if let Some(var) = self.lookup(&value.text) { var } else { 
-          self.error("symbol does not exist", format!("{} could not be resolved within scope.", value.text), expr);
+          self.error("symbol does not exist", format!("{:?} could not be resolved within scope.", value.text), expr);
           return Type::NullVoid;
         };
 
@@ -241,16 +252,44 @@ impl Analyzer {
           Symbol::TypeRef { kind } => kind,
         }.clone()
       },
+      Expr::Object { attrs } => {
+        let fields = attrs.iter().map(|attr| {
+          if let Expr::TypePair { name, kind } = attr {
+            ( name.text.clone(), self.eval_expression(kind) )
+          } else { unreachable!() }
+        }).collect::<HashMap<String, Type>>();
+
+        let mut found = false;
+
+        for symbol in self.scope.symbols.iter() {
+          let kind = if let Symbol::TypeRef { kind } = symbol.1 
+            { kind } else { continue; };
+
+          let attrs = if let Type::Object { attrs } = kind 
+            { attrs } else { continue; };
+
+          if attrs == &fields { found = true; }
+        }
+
+        if !found {
+          let fields = fields.iter().map(|(name, kind)| {
+            format!("{name}: {kind}")
+          }).collect::<Vec<String>>().join(", "); 
+          self.error("dynamic object", format!("There is not type with these fields {{ {fields} }}."), expr)
+        }
+
+        Type::Object { attrs: fields }
+      },
       Expr::FunCall { name, args } => {
         let res = if let Some(symbol) = self.lookup(&name.text) { symbol } else {
-          self.error("symbol does not exist", format!("{} could not be resolved within scope.", name.text), expr);
+          self.error("symbol does not exist", format!("{:?} could not be resolved within scope.", name.text), name);
           return Type::NullVoid;
         };
         
         let kind = match res {
           Symbol::Variable { kind, .. } => kind,
           Symbol::TypeRef { .. } => {
-            self.error("invalid expression", format!("{} is not a function, its a type.", name.text), expr);
+            self.error("invalid expression", format!("{:?} is not a function, its a type.", name.text), expr);
             return Type::NullVoid;
           }
         };
@@ -271,9 +310,9 @@ impl Analyzer {
         }
 
         for i in 0..args.len() {
-          let arg_t = self.get_type(&args[i].clone());
+          let arg_t = self.eval_expression(&args[i].clone());
           if params[i] != arg_t {
-            self.error("mismatched types", format!("{} expected {} as its {i}nth, but was given {}", name.text, params.len(), args.len()), expr);
+            self.error("mismatched types", format!("{} expected {} as its {i}th, but was given {}", name.text, params[i], arg_t), &args[i]);
           }
         }
 
@@ -282,10 +321,10 @@ impl Analyzer {
       Expr::Array { value } => {
         if value.len() == 0 { return Type::Array { kind: Type::NullVoid.wrap() }; }
 
-        let first = self.get_type(&value[0]);
+        let first = self.eval_expression(&value[0]);
 
         value.iter().for_each(|expr| {
-          let kind = self.get_type(expr);
+          let kind = self.eval_expression(expr);
           if kind != first {
             self.error("mismatched types", format!("expected {first}, but was given {kind}. All elements within an array must be of the same type."), expr);
           }
@@ -294,7 +333,7 @@ impl Analyzer {
         return Type::Array { kind: first.wrap() }
       },
       Expr::Index { parent, index } => {
-        let of = self.get_type(parent);
+        let of = self.eval_expression(parent);
         let kind = match of {
           Type::String => Type::String,
           Type::Array { kind } => *kind,
@@ -304,7 +343,7 @@ impl Analyzer {
           },
         };
 
-        let i_kind = self.get_type(index);
+        let i_kind = self.eval_expression(index);
 
         if i_kind != Type::Number {
           self.error("invalid operation", format!("Cannot perform Index with {i_kind}, must be a number"), expr);
@@ -316,8 +355,8 @@ impl Analyzer {
         self.enter();
         
         let params = args.iter().map(|arg| {
-          let (name, kind) = if let Expr::Argument { name, kind } = arg {
-            (name.text.clone(), self.get_type(kind))
+          let (name, kind) = if let Expr::TypePair { name, kind } = arg {
+            (name.text.clone(), self.eval_expression(kind))
           } else { unreachable!() };
           self.append(name, Symbol::Variable { mutable: true, kind: kind.clone() });
           kind
@@ -330,10 +369,10 @@ impl Analyzer {
 
         self.leave();
 
-        return Type::Function { kind: self.get_type(kind).wrap(), args: params };
+        return Type::Function { kind: self.eval_expression(kind).wrap(), args: params };
       },
       Expr::IfExpr { cond, body, other } => {
-        if self.get_type(cond) != Type::Boolean {
+        if self.eval_expression(cond) != Type::Boolean {
           self.error("invalid expression", format!("does not evaluate to a boolean."), expr);
           return Type::NullVoid;
         }
@@ -347,8 +386,8 @@ impl Analyzer {
         return body_t;
       },
       Expr::BoolOper { lhs, oper: _, rhs } => {
-        let lhs_t = self.get_type(lhs);
-        let rhs_t = self.get_type(rhs);
+        let lhs_t = self.eval_expression(lhs);
+        let rhs_t = self.eval_expression(rhs);
 
         if lhs_t != rhs_t {
           self.warn("mismatched types", format!("will always emit false because {lhs_t} and {rhs_t} arent compatable."), expr);
@@ -357,8 +396,8 @@ impl Analyzer {
         return Type::Boolean;
       },
       Expr::MathOper { lhs, oper, rhs } => {
-        let lhs_t = self.get_type(lhs);
-        let rhs_t = self.get_type(rhs);
+        let lhs_t = self.eval_expression(lhs);
+        let rhs_t = self.eval_expression(rhs);
         let oper_s = &oper.text;
 
         if lhs_t != Type::String && lhs_t != rhs_t {
@@ -366,13 +405,13 @@ impl Analyzer {
           return lhs_t;
         }
 
-        if (oper_s != "+=" || oper_s != "+=") && lhs_t == Type::String {
+        if lhs_t == Type::String && (oper_s != "+" && oper_s != "+=") {
           self.error("invalid operation", format!("cannot perform {oper_s:?} operation upon a string."), expr);
           return lhs_t;
         }
         
         let kind = match &lhs_t {
-          Type::String
+          Type::String 
             | Type::Number
             | Type::Array { .. }
             => lhs_t,
@@ -385,8 +424,8 @@ impl Analyzer {
         return kind;
       },
       Expr::Chained { lhs, rhs, .. } => {
-        let lhs = self.get_type(lhs);
-        let rhs = self.get_type(rhs);
+        let lhs = self.eval_expression(lhs);
+        let rhs = self.eval_expression(rhs);
         if lhs != Type::Boolean || rhs != Type::Boolean {
           self.error("invalid expression", format!("cannot join {lhs} and {rhs} using a logical operatior."), expr);
         }
@@ -407,8 +446,8 @@ impl Analyzer {
 
         return base;
       },
-      Expr::Argument { kind, .. } => self.get_type(kind),
-      Expr::NullVoid => todo!(),
+      Expr::TypePair { kind, .. } => self.eval_expression(kind),
+      Expr::NullVoid { .. } => Type::NullVoid,
     };
 
     return kind;

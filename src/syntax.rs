@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::{collections::HashMap, fmt::Debug};
+use std::fmt::Debug;
 
 use crate::token::Token;
 
@@ -15,7 +15,7 @@ pub enum Node {
   ImportLib { path: Vec<Token> },
   EmitValue { value: Expr },
 
-  ObjectDec { name: Token, attrs: HashMap<Token, Expr> },
+  DeclareType { name: Token, attrs: Vec<Expr> },
 
   Compound { value: Vec<Node> },
   Expression{ expr: Expr },
@@ -29,6 +29,8 @@ pub enum Expr {
   VarRef { value: Token },
   FunCall { name: Token, args: Vec<Expr> },
 
+  Object { attrs: Vec<Expr> },
+
   Array { value: Vec<Expr> },
   Index { parent: Value, index: Value },
   Lambda { args: Vec<Expr>, kind: Value, body: Body },
@@ -39,8 +41,8 @@ pub enum Expr {
   Chained { lhs: Value, stich: Token, rhs: Value },
 
   TypeRef { base: Token, arrs: usize, },
-  Argument { name: Token, kind: Value },
-  NullVoid,
+  TypePair { name: Token, kind: Value },
+  NullVoid { prev: Token },
 }
 
 impl Debug for Node {

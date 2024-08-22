@@ -1,8 +1,4 @@
-set name = "max";
-var age = { year: num } -> num {
-  emit year - 2006;
-};
+set a = [1, 2, 3];
+set b = [4, 5, 6];
 
-var class = if name == "max" { emit true; } else { emit false; };
-
-disp(age(2024));
+set c = a + b;
