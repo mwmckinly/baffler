@@ -65,7 +65,7 @@ impl Scope {
 
 #[allow(non_snake_case)]
 fn RootScope() -> Scope {
-  let types = vec![
+  let mut types: HashMap<String, Symbol> = vec![
     ("str", Type::String),
     ("num", Type::Number),
     ("bool", Type::Boolean),
@@ -73,6 +73,16 @@ fn RootScope() -> Scope {
   ].into_iter().map(|(name, kind)| {
     ( name.to_string(), Symbol::TypeRef { kind })
   }).collect();
+
+  let symbols: HashMap<String, Symbol> = vec![
+    ("disp", Type::Function { kind: Type::NullVoid.wrap(), args: vec![
+      Type::String
+    ] })
+  ].iter().map(|(x, y)| {
+    ( x.to_string(), Symbol::Variable { mutable: false, kind: y.clone() } )
+  }).collect();
+
+  types.extend(symbols);
 
   return Scope { symbols: types, parent: None }
 }
@@ -93,7 +103,6 @@ impl Analyzer {
     }
   }
 }
-
 impl Analyzer {
   pub fn init(parser: Parser) -> Self {
     let (nodes, logger) = parser.parse();
@@ -107,8 +116,6 @@ impl Analyzer {
       { self.evaluate(&node); }
   }
 }
-
-
 impl Analyzer {
   pub fn error<S:ToString, V:ToString, C:Coords>(&self, header: S, message: V, spot: C) {
     println!("{}", self.logger.error(header, message.to_string(), spot));
@@ -127,7 +134,6 @@ impl Analyzer {
     self.scope.add(name, symbol);
   }
 }
-
 impl Analyzer {
   fn evaluate(&mut self, node: &Node) -> Type {
     match node {
@@ -194,8 +200,12 @@ impl Analyzer {
       x.text.clone()
     }).collect::<Vec<String>>().join("/") + ".ori";
 
-    let res = if let Ok(bool) = std::fs::exists(&path_s) 
+    let res = if let Ok(bool) = std::fs::exists(&path_s)
       { bool } else { false };
+
+    let res = if !res {
+      if let Ok(bool) = std::fs::exists("lib/".to_string()+&path_s) { bool } else { false }
+    } else { res };
 
     if !res {
       self.error("invalid path", format!("{path_s} is not a valid filepath."), path.as_slice());
@@ -453,3 +463,4 @@ impl Analyzer {
     return kind;
   }
 }
+
