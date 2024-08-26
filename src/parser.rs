@@ -255,12 +255,20 @@ impl Parser {
   }
   fn build_pair(&mut self) -> Expr {
     let name = self.consume(Class::Identifier, "expected argument name");
-    self.consume(Class::Colon, "expected ':' to divide param name and type.");
-    let rhs = if self.current().class == Class::Identifier 
-      { self.fetch_typeref() } else 
-      { self.expect_expr() }.wrap();
-
-    return Expr::TypePair { name, kind: rhs }
+    match self.current().class {
+      Class::Assign => {
+        self.advance();
+        return Expr::ObjectField { name, attr: self.expect_expr().wrap() };
+      },
+      Class::Colon => {
+        self.advance();
+        return Expr::TypePair { name, kind: self.fetch_typeref().wrap() }
+      },
+      _ => {
+        self.error("unexpected token", format!("expecte '=' or ':' for either obj attr, or type pair."), &self.current());
+        std::process::exit(1);
+      },
+    }
   }
 }
 

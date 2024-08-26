@@ -264,8 +264,8 @@ impl Analyzer {
       },
       Expr::Object { attrs } => {
         let fields = attrs.iter().map(|attr| {
-          if let Expr::TypePair { name, kind } = attr {
-            ( name.text.clone(), self.eval_expression(kind) )
+          if let Expr::ObjectField { name, attr } = attr {
+            ( name.text.clone(), self.eval_expression(attr) )
           } else { unreachable!() }
         }).collect::<HashMap<String, Type>>();
 
@@ -290,6 +290,7 @@ impl Analyzer {
 
         Type::Object { attrs: fields }
       },
+      Expr::ObjectField { attr, .. } => self.eval_expression(attr),
       Expr::FunCall { name, args } => {
         let res = if let Some(symbol) = self.lookup(&name.text) { symbol } else {
           self.error("symbol does not exist", format!("{:?} could not be resolved within scope.", name.text), name);

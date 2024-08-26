@@ -1,0 +1,31 @@
+struct Stack {
+  symbols: HashMap<String, Symbol>,
+}
+
+impl Stack {
+  pub fn new() -> Self {
+    return Stack { symbols: HashMap::new() }
+  }
+  pub fn add(&mut self, name: String, symbol: Symbol) {
+    self.symbols.insert(name, symbol);
+  }
+  pub fn get(&mut self, name: &String) -> Option<&Symbol> {
+    return self.symbols.get(name);
+  }
+  pub fn pop(&mut self, name: &String) {
+    self.symbols.remove(name);
+  }
+}
+
+fn RootStack() -> Stack {
+  let mut types: HashMap<String, Symbol> = vec![
+    ("str", Type::String),
+    ("num", Type::Number),
+    ("bool", Type::Boolean),
+    ("null", Type::NullVoid),
+  ].into_iter().map(|(name, kind)| {
+    ( name.to_string(), Symbol::TypeRef { kind })
+  }).collect();
+
+  return Stack { symbols: types }
+}

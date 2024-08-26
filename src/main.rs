@@ -2,11 +2,10 @@
 
 use std::fs::read_to_string;
 
-use analyzer::Analyzer;
 use lexer::Lexer;
 use logger::Logger;
 use parser::Parser;
-
+use runtime::Runtime;
 mod token;
 mod lexer;
 mod logger;
@@ -14,6 +13,7 @@ mod utils;
 mod syntax;
 mod parser;
 mod analyzer;
+mod runtime;
 
 fn main() {
 	let filename = "app/main.ori".to_string();
@@ -22,7 +22,7 @@ fn main() {
 	let logger = Logger::new(filename, source);
 	let lexer = Lexer::new(logger);
 	let parser = Parser::init(lexer);
-	let analyzer = Analyzer::init(parser);
+	let runtime = Runtime::init(parser);
 
-	analyzer.analyze();
+	runtime.interperate();
 }

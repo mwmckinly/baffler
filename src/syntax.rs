@@ -30,6 +30,7 @@ pub enum Expr {
   FunCall { name: Token, args: Vec<Expr> },
 
   Object { attrs: Vec<Expr> },
+  ObjectField { name: Token, attr: Box<Expr> },
 
   Array { value: Vec<Expr> },
   Index { parent: Value, index: Value },

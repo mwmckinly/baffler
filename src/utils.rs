@@ -74,6 +74,7 @@ impl Coords for &Expr {
         let [line, start, length] = base.coords();
         [line, start, length + (2 * arrs)]
       }
+      Expr::ObjectField { name, attr: kind } |
       Expr::TypePair { name, kind } => {
         let [line, start, _] = name.coords();
         let [_, stop, last] = kind.coords();
