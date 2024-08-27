@@ -1,8 +1,7 @@
-use core::arch;
 use std::borrow::Borrow as _;
 use std::collections::HashMap;
 use std::fmt::Display;
-use std::io::{Read, Write};
+use std::io::Write;
 use serde::Serialize;
 
 use crate::logger::Logger;
@@ -10,6 +9,8 @@ use crate::parser::Parser;
 use crate::syntax::{Expr, Node};
 use crate::token::Token;
 use crate::utils::{Color as _, Coords, Wrapper};
+
+type PrimeFunc = fn(&Box<Logger>, Vec<Value>, &Vec<Expr>) -> Value;
 
 #[derive(Clone, PartialEq, Eq, Serialize)]
 pub enum Type {
@@ -198,6 +199,72 @@ fn RootScope() -> Scope {
     symbols, parent: None
   };
 }
+#[allow(non_snake_case, unused)]
+pub fn RuntimePrimatives() -> HashMap<String, PrimeFunc>{
+  let funcs: Vec<(&str, PrimeFunc)> = vec![
+    ("disp", |_: &Box<Logger>, args: Vec<Value>, _: &Vec<Expr>| -> Value {
+      let args = args.iter().map(|x| {
+        x.to_string()
+      }).collect::<Vec<String>>();
+
+      println!("{}", args.join(", "));
+
+      Value::NullVoid
+    }),
+    ("input", |_: &Box<Logger>, args: Vec<Value>, _: &Vec<Expr>| -> Value {
+      let msg = if let Some(first) = args.first() 
+        { first.to_string() } else { "".into() };
+      print!("{msg}");
+
+      std::io::stdout().flush().unwrap();
+      let mut input = String::new();
+
+      if std::io::stdin().read_line(&mut input).is_err() {
+        println!("{}: could not read input!", "error".color(31))
+      };
+
+      return Value::String(input);
+    }),
+    ("format", | logger: &Box<Logger>, args: Vec<Value>, exprs: &Vec<Expr>| -> Value {
+      let msg = if let Some(str) = args.first() { str } else {
+        logger.error("invalid arguments", "format takes in a string", &exprs[0]);
+        return Value::NullVoid;
+      };
+
+      let msg = if let Value::String(val) = msg { val.to_string() } else {
+        logger.error("invalid arguments", "format takes in a string", &exprs[0]);
+        return Value::NullVoid;
+      };
+
+      if args.len() == 1 {
+        return Value::String(msg);
+      }
+
+      let msg: Vec<&str> = msg.split("{}").collect();
+      let mut str: Vec<String> = vec![];
+
+      for i in 0..msg.len() - 1 {
+        str.push(format!("{}{}", msg[i], args[i + 1]));
+      };
+
+      str.push(msg.last().unwrap().to_string());
+      return Value::String(str.join(""));
+    }),
+    ("typeof", | _: &Box<Logger>, args: Vec<Value>, _: &Vec<Expr>| -> Value {
+      let args = args.into_iter().map(|x| { 
+        Value::TypeRef(x.as_type())
+      }).collect::<Vec<Value>>();
+
+      return Value::Array(args);
+    }),
+  ];
+
+  let funcs = funcs.into_iter().map(|(name, func)| {
+    (name.to_string(), func)
+  }).collect::<HashMap<String, PrimeFunc>>();
+
+  return funcs;
+}
 
 pub struct Runtime {
   scope: Scope,
@@ -334,11 +401,13 @@ impl Runtime {
       Expr::ObjectField { attr, .. } => self.evaluate(*attr),
       Expr::Array { value } => {
         let first = self.evaluate(value[0].clone()).as_type();
+        
         let items = value.iter().map(|expr| {
           let item = self.evaluate(expr.clone());
+          let kind = item.as_type();
           
-          if item.as_type() != first {
-            self.error("mismatched types", format!("found {item} in {first}[]."), expr);
+          if kind != first {
+            self.error("mismatched types", format!("found {kind} in {first}[]."), expr);
           }
 
           item
@@ -556,74 +625,78 @@ impl Runtime {
 
     return value;
   }
-  fn is_default_function(&mut self, func: &String, args: Vec<Expr>) -> Result<Value, Vec<Expr>> {
-    if vec!["disp", "input", "format"].iter().any(|x| x == func) {} else {
-      return Err(args);
-    };
-
-    let pars = args.iter().map(|x| {
-      self.evaluate(x.clone())
-    }).collect::<Vec<Value>>();
-
-    let value = match func.as_str() {
-      "disp" => {
-        let args = pars.iter().map(|x| {
+  fn is_default_function(&mut self, name: &String, args: Vec<Expr>) -> Result<Value, Vec<Expr>> {
+    let funcs: Vec<(&str, PrimeFunc)> = vec![
+      ("disp", |_: &Box<Logger>, args: Vec<Value>, _: &Vec<Expr>| -> Value {
+        let args = args.iter().map(|x| {
           x.to_string()
         }).collect::<Vec<String>>();
 
         println!("{}", args.join(", "));
 
         Value::NullVoid
-      },
-      "input" => {
-        let msg = if let Some(first) = pars.first() {
-          first.to_string()
-        } else {
-          self.error("invalid arguments", "input takes in a prompt", &args[0]);
-          return Ok(Value::NullVoid);
-        };
-
+      }),
+      ("input", |_: &Box<Logger>, args: Vec<Value>, _: &Vec<Expr>| -> Value {
+        let msg = if let Some(first) = args.first() 
+          { first.to_string() } else { "".into() };
         print!("{msg}");
 
         std::io::stdout().flush().unwrap();
         let mut input = String::new();
-        
+
         if std::io::stdin().read_line(&mut input).is_err() {
           println!("{}: could not read input!", "error".color(31))
         };
 
-        Value::String(input)
-      },
-      "format" => {
-        let msg = if let Some(str) = pars.first() { str } else {
-          self.error("invalid arguments", "format takes in a string", &args[0]);
-          return Ok(Value::NullVoid);
+        return Value::String(input);
+      }),
+      ("format", | logger: &Box<Logger>, args: Vec<Value>, exprs: &Vec<Expr>| -> Value {
+        let msg = if let Some(str) = args.first() { str } else {
+          logger.error("invalid arguments", "format takes in a string", &exprs[0]);
+          return Value::NullVoid;
         };
 
-        let msg = if let Value::String(val) = msg { val } else {
-          self.error("invalid arguments", "format takes in a string", &args[0]);
-          return Ok(Value::NullVoid);
+        let msg = if let Value::String(val) = msg { val.to_string() } else {
+          logger.error("invalid arguments", "format takes in a string", &exprs[0]);
+          return Value::NullVoid;
         };
 
-        if pars.len() == 1 {
-          return Ok(Value::String(msg.to_string()));
+        if args.len() == 1 {
+          return Value::String(msg);
         }
 
         let msg: Vec<&str> = msg.split("{}").collect();
-
         let mut str: Vec<String> = vec![];
-        
+
         for i in 0..msg.len() - 1 {
-          str.push(format!("{}{}", msg[i], pars[i + 1]));
+          str.push(format!("{}{}", msg[i], args[i + 1]));
         };
 
         str.push(msg.last().unwrap().to_string());
-        Value::String(str.join(""))
-      },
-      _ => unreachable!()
-    };
+        return Value::String(str.join(""));
+      }),
+      ("typeof", | _: &Box<Logger>, args: Vec<Value>, _: &Vec<Expr>| -> Value {
+        let args = args.into_iter().map(|x| { 
+          Value::TypeRef(x.as_type())
+        }).collect::<Vec<Value>>();
 
-    return Ok(value);
+        return Value::Array(args);
+      }),
+    ];
+
+    let funcs = funcs.into_iter().map(|(name, func)| {
+      (name.to_string(), func)
+    }).collect::<HashMap<String, PrimeFunc>>();
+
+    
+    if let Some(func) = funcs.get(name) {
+      let pargs: Vec<Value> = args.iter().map(
+        |x| self.evaluate(x.clone()
+      )).collect();
+      return Ok(func(&self.logger, pargs, &args));
+    } else {
+      return Err(args);
+    };
   }
 }
 
@@ -692,7 +765,7 @@ impl Runtime {
       Value::NullVoid => Type::NullVoid,
       _ => unreachable!()
     };
-
+    
     self.insert(name.text, Symbol::func(params, kind, body));
   }
   fn modify(&mut self, node: Node) {

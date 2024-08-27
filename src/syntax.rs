@@ -31,6 +31,7 @@ pub enum Expr {
 
   Object { attrs: Vec<Expr> },
   ObjectField { name: Token, attr: Box<Expr> },
+  Attribute { parent: Value, attr: Value },
 
   Array { value: Vec<Expr> },
   Index { parent: Value, index: Value },

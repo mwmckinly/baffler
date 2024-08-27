@@ -132,6 +132,7 @@ impl Parser {
       Class::MathOp => self.build_operation(expr),
       Class::BoolOp => self.build_comparison(expr),
       Class::LogicOp => self.build_logic_chain(expr),
+      Class::Colon => self.fetch_attribute(expr),
 
       _ => expr
     };
@@ -219,6 +220,11 @@ impl Parser {
       stich, 
       rhs: rhs.wrap() 
     };
+  }
+
+  fn fetch_attribute(&mut self, lhs: Expr) -> Expr {
+    self.advance(); let attr = self.expect_expr().wrap();
+    Expr::Attribute { parent: lhs.wrap(), attr }
   }
   
   fn lambda_or_object(&mut self) -> Expr {

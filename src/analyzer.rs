@@ -293,6 +293,17 @@ impl Analyzer {
         Type::Object { attrs: fields }
       },
       Expr::ObjectField { attr, .. } => self.eval_expression(attr),
+      Expr::Attribute { parent, attr } => {
+        match self.eval_expression(parent) {
+          Type::String => todo!(),
+          Type::Number => todo!(),
+          Type::Boolean => todo!(),
+          Type::NullVoid => todo!(),
+          Type::Object { attrs } => todo!(),
+          Type::Function { kind, args } => todo!(),
+          Type::Array { kind } => todo!(),
+        }
+      },
       Expr::FunCall { name, args } => {
         let res = if let Some(symbol) = self.lookup(&name.text) { symbol } else {
           self.error("symbol does not exist", format!("{:?} could not be resolved within scope.", name.text), name);

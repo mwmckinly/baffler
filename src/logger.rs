@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::utils::Coords;
 
 #[derive(Debug, Clone)]

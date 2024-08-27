@@ -71,6 +71,8 @@ impl Coords for &Expr {
         [line, start, stop - start + last]
       },
       Expr::IfExpr { cond, .. } => cond.coords(),
+
+      Expr::Attribute { parent: lhs, attr: rhs } |
       Expr::BoolOper { lhs, rhs, .. } |
       Expr::MathOper { lhs, rhs, .. } |
       Expr::Chained { lhs, rhs, .. } => {
@@ -94,7 +96,16 @@ impl Coords for &Expr {
         let [line, start, length] = prev.coords();
         [line, start + length - 1, 1]
       },
-      Expr::Object { attrs } => attrs[0].coords(),
+      Expr::Object { attrs } => {
+        let [line, first, length] = attrs[0].coords();
+        let [second, last, other] = attrs[attrs.len() - 1].coords();
+
+        if line == second {
+          [line, first, last - first + other]
+        } else {
+          [line, first, length]
+        }
+      },
     }
   }
 }

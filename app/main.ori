@@ -1,14 +1,7 @@
-type person {
-   name: str,
-   age: num
+set getAge = { year: num } -> num {
+   set age = if year >= 2024 { emit 0-1; } else { emit 2024 - year; };
+
+   emit "max";
 };
 
-var students = [
-   { name = "peter", age = 19 },
-   { name = "max", age = 17 },
-   { name = "jesse", age = 15 },
-];
-
-students = students + { name = "jesse", age = 15 };
-
-disp(students);
+disp(getAge(2030));
