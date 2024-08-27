@@ -1,13 +1,15 @@
+use core::arch;
 use std::borrow::Borrow as _;
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::io::{Read, Write};
 use serde::Serialize;
 
 use crate::logger::Logger;
 use crate::parser::Parser;
 use crate::syntax::{Expr, Node};
 use crate::token::Token;
-use crate::utils::{Coords, Wrapper};
+use crate::utils::{Color as _, Coords, Wrapper};
 
 #[derive(Clone, PartialEq, Eq, Serialize)]
 pub enum Type {
@@ -216,7 +218,6 @@ impl Runtime {
     });
   }
 
-
   fn lookup<S:ToString>(&self, name: S) -> Option<&Symbol> {
     return self.scope.get(name.to_string());
   }
@@ -236,12 +237,6 @@ impl Runtime {
   pub fn error<S:ToString, V:ToString, C:Coords>(&self, header: S, message: V, spot: C) {
     println!("{}", self.logger.error(header, message.to_string(), spot));
   }
-  pub fn inform<S:ToString, V:ToString, C:Coords>(&self, header: S, message: V, spot: C) {
-    println!("{}", self.logger.error(header, message.to_string(), spot));
-  }
-  pub fn warn<S:ToString, V:ToString, C:Coords>(&self, header: S, message: V, spot: C) {
-    println!("{}", self.logger.error(header, message.to_string(), spot));
-  }
 }
 
 impl Runtime {
@@ -256,6 +251,7 @@ impl Runtime {
           return Value::NullVoid;
         };
 
+
         match res {
           Symbol::Variable { value, .. } => value.clone(),
           Symbol::Function { .. } => {
@@ -269,6 +265,11 @@ impl Runtime {
         }
       },
       Expr::FunCall { name, args } => {
+        let args = match self.is_default_function(&name.text, args) {
+          Ok(value) => return value,
+          Err(args) => args,
+        };
+
         let res = if let Some(symbol) = self.lookup(&name.text) { symbol } else {
           self.error("symbol does not exist", format!("{:?} could not be resolved", name.text), name);
           return Value::NullVoid;
@@ -297,7 +298,7 @@ impl Runtime {
           let y = self.evaluate(x.clone());
 
           if pars[i] != &y.as_type() {
-            self.error("mismatched types", format!("{:?} expected {}, but was given {}.", &name.text, params.len(), args.len()), name);
+            self.error("mismatched types", format!("{:?} expected {}, but was given {}.", &name.text, pars[i], y.as_type()), name);
             return Value::NullVoid;
           }
 
@@ -315,11 +316,18 @@ impl Runtime {
         emmission
       },
       Expr::Object { attrs } => {
-        let fields = attrs.into_iter().map(|x| {
-          if let Expr::ObjectField { name, attr } = x 
-            { (name.text, self.evaluate(*attr)) } else 
-            { unreachable!() }
-        }).collect::<HashMap<String, Value>>();
+        let mut fields = HashMap::new();
+        
+        for attr in attrs {
+
+          let (name, value) = if let Expr::ObjectField { name, attr } = attr {
+            (name.text, self.evaluate(*attr))
+          } else if let Expr::NullVoid { .. } = attr {
+            return Value::Object(fields);
+          } else { unreachable!() };
+          
+          fields.insert(name, value);
+        }
 
         Value::Object(fields)
       },
@@ -537,7 +545,7 @@ impl Runtime {
           return Value::NullVoid;
         };
 
-        for _ in 0..=arrs {
+        for _ in 0..arrs {
           parent = Type::Array(parent.wrap())
         }
 
@@ -547,6 +555,75 @@ impl Runtime {
     };
 
     return value;
+  }
+  fn is_default_function(&mut self, func: &String, args: Vec<Expr>) -> Result<Value, Vec<Expr>> {
+    if vec!["disp", "input", "format"].iter().any(|x| x == func) {} else {
+      return Err(args);
+    };
+
+    let pars = args.iter().map(|x| {
+      self.evaluate(x.clone())
+    }).collect::<Vec<Value>>();
+
+    let value = match func.as_str() {
+      "disp" => {
+        let args = pars.iter().map(|x| {
+          x.to_string()
+        }).collect::<Vec<String>>();
+
+        println!("{}", args.join(", "));
+
+        Value::NullVoid
+      },
+      "input" => {
+        let msg = if let Some(first) = pars.first() {
+          first.to_string()
+        } else {
+          self.error("invalid arguments", "input takes in a prompt", &args[0]);
+          return Ok(Value::NullVoid);
+        };
+
+        print!("{msg}");
+
+        std::io::stdout().flush().unwrap();
+        let mut input = String::new();
+        
+        if std::io::stdin().read_line(&mut input).is_err() {
+          println!("{}: could not read input!", "error".color(31))
+        };
+
+        Value::String(input)
+      },
+      "format" => {
+        let msg = if let Some(str) = pars.first() { str } else {
+          self.error("invalid arguments", "format takes in a string", &args[0]);
+          return Ok(Value::NullVoid);
+        };
+
+        let msg = if let Value::String(val) = msg { val } else {
+          self.error("invalid arguments", "format takes in a string", &args[0]);
+          return Ok(Value::NullVoid);
+        };
+
+        if pars.len() == 1 {
+          return Ok(Value::String(msg.to_string()));
+        }
+
+        let msg: Vec<&str> = msg.split("{}").collect();
+
+        let mut str: Vec<String> = vec![];
+        
+        for i in 0..msg.len() - 1 {
+          str.push(format!("{}{}", msg[i], pars[i + 1]));
+        };
+
+        str.push(msg.last().unwrap().to_string());
+        Value::String(str.join(""))
+      },
+      _ => unreachable!()
+    };
+
+    return Ok(value);
   }
 }
 
@@ -599,6 +676,7 @@ impl Runtime {
       self.error("symbol already exists", format!("{:?} has already been defined.", name.text), name);
       return;
     }
+
     let params = args.into_iter().map(|expr| {
       let (name, kind) = if let Expr::TypePair { name, kind } = expr {
         (name, kind.clone())
@@ -609,10 +687,13 @@ impl Runtime {
       (name.text.clone(), kind)
     }).collect::<HashMap<String, Type>>();
 
-    let kind = if let Value::TypeRef(t) = self.evaluate(*kind) 
-      { t } else { unreachable!() };
+    let kind = match self.evaluate(*kind) {
+      Value::TypeRef(t) => t,
+      Value::NullVoid => Type::NullVoid,
+      _ => unreachable!()
+    };
 
-    self.insert(name, Symbol::func(params, kind, body));
+    self.insert(name.text, Symbol::func(params, kind, body));
   }
   fn modify(&mut self, node: Node) {
     let (name, value) = if let Node::ChangeVal { name, value } = node {

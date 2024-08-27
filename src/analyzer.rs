@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use std::{borrow::Borrow, collections::HashMap};
 use std::fmt::{Display, Debug};
 use serde::Serialize;

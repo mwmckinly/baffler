@@ -1,4 +1,14 @@
-set a = [1, 2, 3];
-set b = [4, 5, 6];
+type person {
+   name: str,
+   age: num
+};
 
-set c = a + b;
+var students = [
+   { name = "peter", age = 19 },
+   { name = "max", age = 17 },
+   { name = "jesse", age = 15 },
+];
+
+students = students + { name = "jesse", age = 15 };
+
+disp(students);

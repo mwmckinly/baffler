@@ -1,5 +1,14 @@
 use crate::{syntax::{Expr, Node}, token::{Class, Token}};
 
+pub trait Color {
+  fn color(&self, code: u8) -> String;
+}
+impl<T:ToString> Color for T {
+  fn color(&self, code: u8) -> String {
+    format!("\x1b[{code}m{}\x1b0m", self.to_string())
+  }
+} 
+
 pub trait Coords {
   fn coords(&self) -> [usize; 3];
 }
@@ -158,4 +167,3 @@ impl Coords for Node {
     return (&self).coords();
   }
 }
-

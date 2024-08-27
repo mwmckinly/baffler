@@ -74,7 +74,7 @@ impl Lexer {
         loop {
           match self.current() {
             '.' => { dots += 1; text += "."; self.advance(); },
-            '0'..'9' => { text.push(self.current()); self.advance(); },
+            '0'..='9' => { text.push(self.current()); self.advance(); },
 
             _ => break,
           }
