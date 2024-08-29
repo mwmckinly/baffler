@@ -1,7 +1,0 @@
-set getAge = { year: num } -> num {
-   set age = if year >= 2024 { emit 0-1; } else { emit 2024 - year; };
-
-   emit "max";
-};
-
-disp(getAge(2030));

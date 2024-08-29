@@ -12,11 +12,10 @@ mod logger;
 mod utils;
 mod syntax;
 mod parser;
-mod analyzer;
 mod runtime;
 
 fn main() {
-	let filename = "app/main.ori".to_string();
+	let filename = "app/main.baf".to_string();
 	let source = read_to_string(&filename).unwrap();
 
 	let logger = Logger::new(filename, source);

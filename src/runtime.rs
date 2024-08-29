@@ -808,7 +808,7 @@ impl Runtime {
 
     let path_s = path.iter().map(|x| {
       x.text.clone()
-    }).collect::<Vec<String>>().join("/") + ".ori";
+    }).collect::<Vec<String>>().join("/") + ".baf";
 
     let res = if let Ok(bool) = std::fs::exists(&path_s)
       { bool } else { false };
