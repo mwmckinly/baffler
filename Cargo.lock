@@ -6,6 +6,7 @@ version = 3
 name = "baffler"
 version = "0.1.0"
 dependencies = [
+ "ordermap",
  "serde",
  "serde_yaml",
 ]
@@ -37,6 +38,15 @@ name = "itoa"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
+
+[[package]]
+name = "ordermap"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61d7d835be600a7ac71b24e39c92fe6fad9e818b3c71bfc379e3ba65e327d77f"
+dependencies = [
+ "indexmap",
+]
 
 [[package]]
 name = "proc-macro2"

@@ -5,7 +5,7 @@ pub trait Color {
 }
 impl<T:ToString> Color for T {
   fn color(&self, code: u8) -> String {
-    format!("\x1b[{code}m{}\x1b0m", self.to_string())
+    format!("\x1b[{code}m{}\x1b[0m", self.to_string())
   }
 } 
 
