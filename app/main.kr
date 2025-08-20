@@ -1,0 +1,11 @@
+# "hello world"             # String
+# 42                        # Number
+# true                      # Boolean
+# myVar                     # Variable
+
+# [ 1, 2, 3 ]               # Array
+# { a, b } ( "inline test" ) # Inline with args + code
+
+# ( 99 )                    # Container
+# 1 + 2                     # BinaryOp with operator
+x == y                    # BinaryOp with comparator
