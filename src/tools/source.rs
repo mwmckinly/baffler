@@ -19,7 +19,7 @@ impl Source {
       let size = data.len();
 
       let rows = iter::once(0).chain(data.iter().enumerate()
-         .filter_map(|(i, ch)| (*ch == b'\n').then_some(i)))
+         .filter_map(|(i, ch)| (*ch == b'\n').then_some(i + 1)))
          .collect::<Vec<_>>();
 
       let data = data.into_iter().chain(iter::repeat_n(0, 8))
@@ -72,7 +72,10 @@ impl Source {
    fn chunks(&self, bounds: Bounds) -> Vec<&str> {
       let [from, until] = bounds.lines(&self);
 
-      return self.read(from, until)
+      let from = self.rows[from];
+      let until = self.rows[until] - 1;
+
+      return self.read(from, until).strip_suffix("\n").unwrap()
          .split("\n").collect::<Vec<_>>();
    }
 }

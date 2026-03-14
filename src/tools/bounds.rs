@@ -8,8 +8,8 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Bounds {
-   head: usize,
-   tail: usize,
+   pub head: usize,
+   pub tail: usize,
 }
 
 impl Bounds {
@@ -27,8 +27,8 @@ impl Bounds {
 
       let row = match rows.binary_search(&self.head) 
          { Ok(r) => r, Err(r) => r - 1 };
-      
-      let col = rows[row] - self.head;
+
+      let col = self.head - rows[row];
 
       return [row + 1, col + 1];
    }
@@ -42,7 +42,7 @@ impl Bounds {
       let tail = match rows.binary_search(&self.tail) 
          { Ok(r) => r, Err(r) => r - 1 };
 
-      return [head, tail];
+      return [head, tail + 1];
    }
 
    pub fn span(&self) -> usize {

@@ -1,4 +1,6 @@
-use std::fmt::Display;
+use std::{fmt::Display, ops::Deref, str::from_utf8_unchecked};
+
+use crate::tools::{bounds::Bounds, report::LogLevel, source::Source};
 
 pub trait Message: Sized {
    fn print<X:Display>(msg: X) {
@@ -28,7 +30,6 @@ macro_rules! prettify {
    };
 }
 
-
 macro_rules! echo {
    ($($fmt:literal $(, $args:expr)*);+ $(;)?) => {{
       use std::io::Write;
@@ -36,5 +37,19 @@ macro_rules! echo {
       $( writeln!(stderr, $fmt $(, $args)*).unwrap(); )+
    }};
 }
+
+
+pub fn from_bytes<'a, T>(data: T) -> &'a str where T:Deref<Target = &'a [u8]>{
+   unsafe { from_utf8_unchecked(&data) }
+}
+
+
+pub trait Loggly: Sized + Deref<Target = Source> {
+   fn err<X:Display>(&self, reason: &str, info: X, bounds: Bounds) {
+      self.report(LogLevel::Error, Self::name(), reason, info, bounds);
+   }
+}
+
+impl<T> Loggly for T where T:Sized + Deref<Target = Source> {}
 
 
