@@ -8,9 +8,7 @@ pub enum Class {
    Keyword(Keyword),
    Literal(Literal),
 
-   EnterZone(Bracket),
-   LeaveZone(Bracket),
-
+   Bracket(Bracket),
    Operator(Operator),
 
    Comma, Colon,
@@ -27,6 +25,7 @@ pub enum Keyword {
    Import,
    Export,
 }
+classify!(Keyword, Keyword);
 
 #[apply(derives)]
 pub enum Literal {
@@ -35,13 +34,15 @@ pub enum Literal {
    Boolean,
    Null,
 }
+classify!(Literal, Literal);
 
 #[apply(derives)]
 pub enum Bracket {
-   Curly,
-   Square,
-   Paren,
+   OpenCurly,   ExitCurly,
+   OpenSquare, ExitSquare,
+   OpenParen,   ExitParen,
 }
+classify!(Bracket, Bracket);
 
 #[apply(derives)]
 pub enum Operator {
@@ -60,12 +61,13 @@ pub enum Operator {
    Not, Neg,
 }
 
+classify!(Operator, Operator);
 
 pub trait Classy: Sized + Into<Class> {
    fn test(_data: &[u8]) -> Option<Class> {
       Self::panic("no direct conversion from text.")
    }
-   fn from(data: &[u8]) -> Class {
+   fn init(data: &[u8]) -> Class {
       return match Self::test(data) {
          Some(cls) => cls,
          None => {
@@ -96,7 +98,6 @@ impl Classy for Keyword {
       return Some(kind.into());
    }
 }
-
 impl Classy for Operator {
    fn test(data: &[u8]) -> Option<Class> {
       let kind = match data.len() {
@@ -138,30 +139,27 @@ impl Classy for Operator {
       return Some(kind.into());
    }
 }
+impl Classy for Literal {
+   fn test(data: &[u8]) -> Option<Class> {
+      return matches!(from_bytes(&data), "true" | "false").then_some(Self::Boolean.into())
+   }
+}
+impl Classy for Bracket {
+   fn test(_data: &[u8]) -> Option<Class> {
+      let kind = match _data[0] as char {
+         '(' => Class::Bracket(Self::OpenParen), 
+         '[' => Class::Bracket(Self::OpenSquare), 
+         '{' => Class::Bracket(Self::OpenCurly), 
+         ')' => Class::Bracket(Self::ExitParen), 
+         ']' => Class::Bracket(Self::ExitSquare), 
+         '}' => Class::Bracket(Self::ExitCurly), 
+         _ => return None,
+      };
 
-impl Classy for Literal {}
-impl Classy for Bracket {}
+      return Some(kind);
+   }
+}
 
-impl From<Keyword> for Class {
-   fn from(value: Keyword) -> Self {
-      return Class::Keyword(value);
-   }
-}
-impl From<Literal> for Class {
-   fn from(value: Literal) -> Self {
-      return Class::Literal(value);
-   }
-}
-impl From<Operator> for Class {
-   fn from(value: Operator) -> Self {
-      return Class::Operator(value)
-   }
-}
-impl From<Bracket> for Class {
-   fn from(_: Bracket) -> Self {
-      Bracket::panic("cannot be turned into a class!!")
-   }
-}
 
 impl std::fmt::Display for Class {
    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -173,3 +171,5 @@ impl std::fmt::Display for Class {
       return write!(f, "{text}");
    }
 }
+
+

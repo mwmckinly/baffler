@@ -62,7 +62,7 @@ impl<I> Index<I> for Source where Data:Index<I> {
 
 impl Source {
    pub fn read(&self, start: usize, stop: usize) -> &str {
-      unsafe { from_bytes(&self[start..=stop]) }
+      unsafe { from_bytes(&self[start..stop]) }
    }
 
    pub fn peak(&self, index: usize) -> char {
@@ -73,7 +73,7 @@ impl Source {
       let [from, until] = bounds.lines(&self);
 
       let from = self.rows[from];
-      let until = self.rows[until] - 1;
+      let until = self.rows[until];
 
       return self.read(from, until).strip_suffix("\n").unwrap()
          .split("\n").collect::<Vec<_>>();

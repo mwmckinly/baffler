@@ -11,9 +11,9 @@ pub mod lexer;
 fn main() {
 	let src = Source::from("app/main.baf".into());
 
-	let (src, tokens) = Lexer::lex(src);
+	let (_, _) = Lexer::lex(src);
 
-	tokens.into_iter().for_each(
-		|tok| tok.disp(&src)
-	);
+	// tokens.into_iter().for_each(
+	// 	|tok| tok.disp(&src)
+	// );
 }

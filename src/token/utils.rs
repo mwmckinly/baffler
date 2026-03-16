@@ -8,3 +8,14 @@ macro_rules! derives {
 }
 
 
+macro_rules! classify {
+   ($t:ty, $variant:ident) => {
+      impl From<$t> for Class {
+         fn from(value: $t) -> Self {
+            return Class::$variant(value);
+         }
+      }
+   };
+}
+
+

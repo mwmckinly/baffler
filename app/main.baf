@@ -1,12 +1,176 @@
-''''''''''''
+import core.math;
+import core.io;
+export util.debug;
 
-
-
+set VERSION: num = 1;
+set TITLE: str = "lexer torture test";
 
 fun main(args: str[]) -> [
-   disp(123);
 
-   emit 1;
+   var counter: num = 0;
+   var toggle: bool = true;
+   var nothing: any = null;
+
+   var veryLongIdentifierNameForTestingLexerBoundaries123: num = 5;
+
+   disp(TITLE);
+
+   var user: User = User("max", 21);
+   disp(user.name);
+   disp(user.age);
+
+   var deep: obj = [
+      level1: [
+         level2: [
+            level3: [
+               level4: [
+                  value: 42
+               ]
+            ]
+         ]
+      ]
+   ];
+
+   disp(deep.level1.level2.level3.level4.value);
+
+   var nums: num[] = [1,2,3,4,5,6,7,8,9];
+
+   disp(nums[0]);
+   disp(nums[1]);
+   disp(nums[2]);
+
+   counter += 1;
+   counter -= 2;
+   counter *= 3;
+   counter /= 2;
+   counter %= 4;
+
+   set sum: num = 1 + 2 + 3 + 4;
+   set mix: num = 10 - 5 * 2 + 8 / 4 % 3;
+
+   if counter == 0 [
+      disp("zero");
+   ] else [
+      disp("not zero");
+   ];
+
+   if counter != 1 [
+      disp("neq works");
+   ];
+
+   if counter > 0 [
+      disp("gt");
+   ];
+
+   if counter >= 0 [
+      disp("gte");
+   ];
+
+   if counter < 10 [
+      disp("lt");
+   ];
+
+   if counter <= 10 [
+      disp("lte");
+   ];
+
+   if toggle && true [
+      disp("and");
+   ];
+
+   if toggle || false [
+      disp("or");
+   ];
+
+   if !toggle [
+      disp("not");
+   ];
+
+   if -counter < 0 [
+      disp("negative");
+   ];
+
+   loop [
+
+      counter += 1;
+
+      if counter > 10 [
+         break;
+      ];
+
+      if counter % 2 == 0 [
+         disp("even");
+      ] else [
+         disp("odd");
+      ];
+
+   ];
+
+   var matrix: num[][] = [
+      [1,2,3],
+      [4,5,6],
+      [7,8,9]
+   ];
+
+   disp(matrix[0][0]);
+   disp(matrix[1][2]);
+   disp(matrix[2][1]);
+
+   var obj: obj = [
+      a:1,
+      b:2,
+      c:[
+         d:3,
+         e:[
+            f:4,
+            g:5
+         ]
+      ]
+   ];
+
+   disp(obj.c.e.g);
+
+   core.math.print(TITLE);
+   core.io.print(user.name);
+
+   emit 0;
+];
+
+
+fun User(name: str, age: num) -> [
+
+   var self: obj = [
+      name:name,
+      age:age
+   ];
+
+   emit self;
+];
+
+
+fun arithmeticStress(a: num, b: num) -> [
+
+   var result: num = 0;
+
+   result = a + b;
+   result = a - b;
+   result = a * b;
+   result = a / b;
+   result = a % b;
+
+   result += 1;
+   result -= 1;
+   result *= 2;
+   result /= 2;
+   result %= 3;
+
+   if result == 0 [
+      disp("zero");
+   ] else [
+      disp("nonzero");
+   ];
+
+   emit result;
 ];
 
 
