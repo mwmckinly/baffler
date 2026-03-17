@@ -2,7 +2,7 @@ use std::{fmt::Display, ops::Deref, str::from_utf8_unchecked};
 
 use crate::tools::{bounds::Bounds, report::LogLevel, source::Source};
 
-pub trait Message: Sized {
+pub trait Named: Sized {
    fn print<X:Display>(msg: X) {
       println!("[{}]: {msg}", Self::name());
    }
@@ -21,7 +21,7 @@ pub trait Message: Sized {
    }
 }
 
-impl<T> Message for T where T:Sized {}
+impl<T> Named for T where T:Sized {}
 
 
 macro_rules! prettify {
@@ -44,12 +44,12 @@ pub fn from_bytes<'a, T>(data: T) -> &'a str where T:Deref<Target = &'a [u8]>{
 }
 
 
-pub trait Loggly: Sized + Deref<Target = Source> {
+pub trait Echo: Sized + Deref<Target = Source> {
    fn err<X:Display>(&self, reason: &str, info: X, bounds: Bounds) {
       self.report(LogLevel::Error, Self::name(), reason, info, bounds);
    }
 }
 
-impl<T> Loggly for T where T:Sized + Deref<Target = Source> {}
+impl<T> Echo for T where T:Sized + Deref<Target = Source> {}
 
 

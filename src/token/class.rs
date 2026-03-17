@@ -59,6 +59,8 @@ pub enum Operator {
    And,  Or,
 
    Not, Neg,
+
+   Range,
 }
 
 classify!(Operator, Operator);
@@ -131,6 +133,7 @@ impl Classy for Operator {
             '!' => Self::Neq,
             '>' => Self::Gte,
             '<' => Self::Lte,
+            '.' => Self::Range,
             _ => return None,
          },
          _ => return None,

@@ -69,10 +69,18 @@ impl Lexer {
          '0'..='9' | '.' => {
             let mut deci = text == '.';
 
-            if deci && !matches!(self.curr(), '0'..='9') {
-               push(&self, Class::Dot);
-               return;
-            }
+            if deci { match self.curr() {
+               '.' => {
+                  push(&self, Operator::Range.into());
+                  self.index += 1;
+                  return;
+               },
+               '0'..='9' => {},
+               _ => {
+                  push(&self, Class::Dot);
+                  return;
+               },
+            }};
 
             loop {
                match self.curr() {
@@ -91,6 +99,26 @@ impl Lexer {
          ';' => push(&self, Class::SemiColon),
          ':' => push(&self, Class::Colon),
          ',' => push(&self, Class::Comma),
+
+         '#' => {
+            if !self.matches(":##") {
+               while self.curr() != '\n' { self.index += 1; }
+               return;
+            }
+
+            while self.curr() != '\0' {
+               if self.matches("##:#") 
+                  { self.index += 4; return; }
+               self.index += 1;
+            }
+
+            let span = self.span(head);
+            let [row, col] = span.local(&self.src);
+
+            let info = format_args!("Comment started at {row}:{col}, and was never closed.");
+
+            self.err("unterminated block comment", info, span);
+         },
 
          '"' => {
             loop {
@@ -151,6 +179,10 @@ impl Lexer {
 
    fn data(&self, head: usize) -> &[u8] {
       return &self.src[head..self.index];
+   }
+
+   fn matches(&self, s: &str) -> bool {
+      return s.chars().enumerate().all(|(i, c)| self.peak(i + self.index) == c);
    }
 }
 
